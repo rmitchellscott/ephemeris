@@ -1,6 +1,7 @@
 # Ephemeris
+<img src="assets/logo.svg" alt="Ephemeris Icon" width="170" align="right">
 
-> Map your daily trajectory.
+> Your daily path through time.
 
 Ephemeris is a Python-based tool that automatically generates clean, daily schedules using ICS calendar data. Designed with e-ink tablets like ReMarkable and Kindle Scribe in mind.
 
@@ -9,6 +10,25 @@ Ephemeris is a Python-based tool that automatically generates clean, daily sched
 - **Automated Schedule Generation**: Seamlessly convert ICS calendar data into organized daily planners.
 - **Customizable Layout**: Adjust your daily schedule's layout, timeframe, and appearance via environment variables.
 - **Elegant PDF Output**: Clean PDFs designed specifically with the e-ink tablets in mind.
+
+## Screenshots
+
+These screenshots broadly show the layout options that are possible. See [Customization](#customization--supported-environment-variables) for more information.
+
+<p float="left">
+  <a href="assets/example-default.png">
+    <img src="assets/example-default.png" alt="Default Layout" width="200px"/>
+  </a>
+  <a href="assets/example-grid-only.png">
+    <img src="assets/example-grid-only.png" alt="Time Grid Only" width="200px"/>
+  </a>
+  <a href="assets/example-grid-allday.png">
+    <img src="assets/example-grid-allday.png" alt="All Day Full Width" width="200px"/>
+  </a>
+    <a href="assets/example-centercal.png">
+    <img src="assets/example-centercal.png" alt="Single Month Mini-Calendar" width="200px"/>
+  </a>
+</p>
 
 ## Getting Started
 
