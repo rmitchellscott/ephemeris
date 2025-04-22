@@ -1,0 +1,96 @@
+# macOS
+############################
+.DS_Store
+.AppleDouble
+.LSOverride
+# Icon? files
+Icon?
+._*
+
+# Python
+############################
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually in a “dist/” folder
+#  Uncomment if you’re using it:
+# *.manifest
+# *.spec
+
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# pipenv
+Pipfile.lock
+
+# pytest
+.pytest_cache/
+.cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# pyre
+.pyre/
+
+# coverage
+.coverage
+.coverage.*
+htmlcov/
+
+# tox
+.tox/
+
+# Logs and databases
+*.log
+*.sqlite3
+*.pid
+
+# Docker
+############################
+# Environment variables (e.g. docker-compose .env files)
+.env
+# Local override for docker-compose
+docker-compose.override.yml
+# Local Docker volume mounts
+volume_data/
+
+# Editors and IDEs
+############################
+# IntelliJ / PyCharm
+.idea/
+# Vim swap files
+*.swp
+# Emacs temporary files
+*~
+# VS Code
+.vscode/
