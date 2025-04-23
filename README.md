@@ -127,7 +127,7 @@ python ephemeris.py
 | DRAW_MINICALS  | full            | full, current, false               | `full` will draw mini-calendars for the current and next month, `current` will draw only the current month, `false` will disable. |
 | EVENT_FILL     | gray14          | black,gray0, #000000               | Color for the background of events. CSS names, Ephemeris gray names, and hex supported. |
 | EVENT_STROKE   | gray(20%)       | black,gray0, #000000               | Color for the outline of events. CSS names, Ephemeris gray names, and hex supported.     |
-| FOOTER         | updated         | updated, disabled, My Cool Footer  | Set to `updated` to print the "Updated at" timestamp, `disabled` to disable, or any text you want.  |
+| FOOTER         | E P H E M E R I S         | updated, disabled, My Cool Footer  | Set to `updated` to print the "Updated at" timestamp, `disabled` to disable, or any text you want.  |
 | FOOTER_COLOR   | gray(60%)       | black,gray0, #000000             | Color for the page footer. CSS names, Ephemeris gray names, and hex supported.   |
 | GRIDLINE_COLOR | gray(20%)       | black, #000000                   | Color for the time grid lines. CSS names, Ephemeris gray names, and hex supported.   |
 | MINICAL_ALIGN  | right           | center, right, left                | Horizontal alignment for the mini-calenders. Center and Left are available when `DRAW_ALL_DAY` is `false`.  |
