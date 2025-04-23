@@ -99,7 +99,7 @@ def load_config():
         config = yaml.safe_load(f)
 
     for cal in config.get("calendars", []):
-        raw = cal.get("color", "#CCCCCC")
+        raw = cal.get("color", "black")
         cal["color"] = css_color_to_hex(raw)
 
     return config
@@ -300,7 +300,7 @@ def load_calendars_from_config(config):
 
     for entry in config["calendars"]:
         name   = entry["name"]
-        color  = entry.get("color", "#CCCCCC")
+        color  = entry.get("color", "black")
         source = entry["source"]
 
         if source.startswith("http"):
@@ -781,7 +781,7 @@ def load_raw_events(config):
     names = [e["name"] for e in config["calendars"]]
     print(f"⚙️ Loading {len(names)} calendars: {names!r}")
     for entry in config["calendars"]:
-        name, color, source = entry["name"], entry.get("color","#CCCCCC"), entry["source"]
+        name, color, source = entry["name"], entry.get("color","black"), entry["source"]
 
         # fetch bytes
         if source.startswith("http"):
