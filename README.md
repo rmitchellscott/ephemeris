@@ -3,13 +3,13 @@
 
 > Your daily path through time.
 
-Ephemeris is a Python-based tool that automatically generates clean, daily schedules using ICS calendar data. Designed with e-ink tablets like ReMarkable and Kindle Scribe in mind.
+Ephemeris is a Python-based tool that generates clean, daily schedules using ICS calendar data. Designed with e-ink tablets like reMarkable and Kindle Scribe in mind.
 
 ## Features
 
 - **Automated Schedule Generation**: Seamlessly convert ICS calendar data into organized daily planners.
 - **Customizable Layout**: Adjust your daily schedule's layout, timeframe, and appearance via environment variables.
-- **Elegant PDF Output**: Clean PDFs designed specifically with the e-ink tablets in mind.
+- **Elegant PDF Output**: Clean PDFs designed specifically for e-ink devices.
 
 ## Screenshots
 
