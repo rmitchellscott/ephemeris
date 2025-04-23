@@ -1,7 +1,11 @@
 # Ephemeris
 <img src="assets/logo.svg" alt="Ephemeris Icon" width="170" align="right">
 
+[![rm1](https://img.shields.io/badge/rM1-supported-green)](https://remarkable.com/store/remarkable)
+[![rm2](https://img.shields.io/badge/rM2-supported-green)](https://remarkable.com/store/remarkable-2)
+[![rmpp](https://img.shields.io/badge/rMPP-supported-green)](https://remarkable.com/store/overview/remarkable-paper-pro)
 > Your daily path through time.
+
 
 Ephemeris is a Python-based tool that generates clean, daily schedules using ICS calendar data. Designed with e-ink tablets like reMarkable and Kindle Scribe in mind.
 
@@ -97,6 +101,50 @@ Run the script:
 ```bash
 python ephemeris.py
 ```
+## Common Device Parameters
+
+#### reMarkable 1
+```shell
+PDF_PAGE_SIZE=1404x1872
+PDF_DPI=226
+```
+#### reMarkable 2
+```shell
+PDF_PAGE_SIZE=1404x1872
+PDF_DPI=226
+```
+#### reMarkable Paper Pro
+```shell
+PDF_PAGE_SIZE=1620x2160
+PDF_DPI=229
+```
+#### Kindle Scribe*
+```shell
+PDF_PAGE_SIZE=1860x2480
+PDF_DPI=300
+```
+#### Boox Note Air2 Plus
+```shell
+PDF_PAGE_SIZE=1404x1872
+PDF_DPI=227
+```
+#### Boox Tab Ultra
+```shell
+PDF_PAGE_SIZE=1404x1872
+PDF_DPI=227
+```
+#### Kobo Elipsa 2E
+```shell
+PDF_PAGE_SIZE=1404x1872
+PDF_DPI=227
+```
+#### Supernote A5 X
+```shell
+PDF_PAGE_SIZE=1404x1872
+PDF_DPI=226
+```
+
+<sub>*Information seems hard to find for the Kindle Scribe. If any of these values need correction, please open a GitHub Issue.</sub>
 
 ## Customization & Supported Environment Variables
 
