@@ -137,7 +137,7 @@ python ephemeris.py
 | MINICAL_HEIGHT | 60              | 40                                 | Height of mini-calendars and All-Day Events area in points (1pt = 1/72in).   |
 | MINICAL_GAP    | 10              | 12                                 | Gap between each calender, and between calendars and other elements. In points (1pt = 1/72in).   |
 | PDF_DPI        | 226             | 300                                | DPI/PPI for rendered PDF.   |
-| PDF_PAGE_SIZE  | 1872x1404       | 1080x1920                          | Resolution for rendered PDF.   |
+| PDF_PAGE_SIZE  | 1404x1872     | 1080x1920                          | Resolution for rendered PDF.   |
 | PDF_MARGIN_LEFT        | 6       | 12                                 | Left page margin in points (1pt = 1/72in).   |
 | PDF_MARGIN_RIGHT       | 6       | 12                                 | Right page margin in points (1pt = 1/72in).   |
 | PDF_MARGIN_TOP         | 9       | 12                                 | Top page margin in points (1pt = 1/72in).   |
