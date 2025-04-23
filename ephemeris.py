@@ -30,6 +30,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from PyPDF2 import PdfMerger
 
+DEBUG_LAYERS = os.getenv("DEBUG_LAYERS", "false").lower() in ("1", "true", "yes")
+
 timezone_str = os.getenv("TIMEZONE", "UTC")
 EXCLUDE_BEFORE = int(os.getenv("EXCLUDE_BEFORE", "0"))
 START_HOUR = int(os.getenv("START_HOUR", "6"))
@@ -387,6 +389,9 @@ def filter_events_for_day(events, target_date):
         if local_start.hour < EXCLUDE_BEFORE:
             print(f"⏰  Dropped (too early): {title!r} at hour {local_start.hour}")
             continue
+        if local_start.hour >= END_HOUR:
+            print(f"⏰  Dropped (after end hour): {title!r} at {local_start.hour}")
+            continue
         # 3) not canceled
         title_lower     = title.lower()
         status          = meta.get("status", "").lower()
@@ -501,6 +506,16 @@ def assign_stacks(events):
                 assignments[idx] = len(layers) - 1
 
         max_depth = len(layers)
+        # ── DEBUG DUMP ─────────────────────────────
+        if DEBUG_LAYERS:
+            print("🔍  Debug: event layers for this cluster:")
+            for idx, (start, end, title, meta) in cluster_events:
+                li = assignments[idx]              # safe now, idx ∈ cluster
+                ts = lambda dt: dt.astimezone(tz_local).strftime("%H:%M")
+                clean_title = str(title)    # title is your vText instance
+                print(f"   • Layer {li}: {clean_title} [{ts(start)} → {ts(end)}]")
+            print("🔍  End debug dump\n")
+        # ────────────────────────────────────────────
 
         # Compute width fraction for each event in cluster
         for idx, (start, end, title, meta) in cluster_events:
@@ -1193,7 +1208,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         for other in events:
             if (other["layer_index"] == event["layer_index"] + 1
                 and start < other["end"] and other["start"] < end
-                and abs((other["start"] - start).total_seconds()) < 30*60):
+                and (other["start"] - start).total_seconds() < 30*60):
                 other_w  = total_width * other["width_frac"]
                 other_x  = grid_right - other_w
                 avail    = other_x - title_x_start - 2
@@ -1225,7 +1240,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         for other in events:
             if other["layer_index"] == event["layer_index"] + 1:
                 if start < other["end"] and other["start"] < end:
-                    delta = abs((other["start"] - start).total_seconds())
+                    delta = (other["start"] - start).total_seconds()
                     if delta < 30 * 60:
                         has_direct_above = True
                         above_event = other
