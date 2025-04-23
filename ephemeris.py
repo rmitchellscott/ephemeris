@@ -1133,21 +1133,38 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         meta = event["meta"]
         width_frac = event["width_frac"]
 
+        grid_start_dt = datetime.combine(date_label, time(START_HOUR, 0)).replace(tzinfo=tz_local)
+        grid_end_dt   = datetime.combine(date_label, time(END_HOUR,   0)).replace(tzinfo=tz_local)
 
-        y_start = time_to_y(start, layout)
-        y_end = time_to_y(end, layout)
+        # Handle off-grid starts
+        draw_start = max(start, grid_start_dt)
+        draw_end   = min(end,   grid_end_dt)
+
+        # if nothing is on‐grid, skip (or promote to all‐day)
+        if draw_start >= draw_end:
+            continue
+
+        start_eff = draw_start
+        end_eff   = draw_end
+
+        y_start = time_to_y(start_eff, layout)
+        y_end   = time_to_y(end_eff,   layout)
+        y_start_raw = time_to_y(start, layout)
+        y_end_raw   = time_to_y(end,   layout)
+
         box_height = y_start - y_end
 
         box_width = total_width * width_frac
 
         box_x = grid_right - box_width  # right-align
 
+        breached_top    = (y_start_raw > layout["grid_top"])
+        breached_bottom = (y_end_raw   < layout["grid_bottom"])
+
+        # clamp to grid bounds
         clamped_y_start = min(y_start, layout["grid_top"])
         clamped_y_end   = max(y_end,   layout["grid_bottom"])
         clamped_h       = clamped_y_start - clamped_y_end
-
-        breached_top    = (y_start > layout["grid_top"])
-        breached_bottom = (y_end   < layout["grid_bottom"])
 
         # print(f"📦 Event: '{title}' | box_x: {box_x:.2f} | box_width: {box_width:.2f} | box_height: {box_height:.2f}")
 
@@ -1164,25 +1181,25 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         c.setFillColor(css_color_to_hex(EVENT_FILL))
         draw_rect_with_optional_round(c, box_x+ color_bar_width, clamped_y_end, box_width - color_bar_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=1,fill=1)
 
-        if start.hour < START_HOUR or start.hour >= END_HOUR:
-            continue
+        # if start.hour < START_HOUR or start.hour >= END_HOUR:
+        #     continue
         c.setFillGray(0)
-        duration_minutes = (end - start).total_seconds() / 60
+        duration_minutes = (end_eff - start_eff).total_seconds() / 60
 
         font_size, y_offset = get_title_font_and_offset(duration_minutes)
         c.setFont("Montserrat-Regular", font_size)
         # Prepare labels (moved above ellipsizing)
         time_label = f"{fmt_time(start)} - {fmt_time(end)}"
-        title_font_size, title_y_offset = get_title_font_and_offset((end - start).total_seconds()/60)
-        time_font_size,  time_y_offset  = get_time_font_and_offset((end - start).total_seconds()/60)
+        title_font_size, title_y_offset = get_title_font_and_offset((end_eff - start_eff).total_seconds()/60)
+        time_font_size,  time_y_offset  = get_time_font_and_offset((end_eff - start_eff).total_seconds()/60)
 
         # Decide hide/move flags for time before ellipsizing
         has_direct_above = False
         above_event = None
         for other in events:
             if (other["layer_index"] == event["layer_index"] + 1
-                and start < other["end"] and other["start"] < end
-                and abs((other["start"] - start).total_seconds()) <= 30*60):
+                and start_eff < other["end"] and other["start"] < end_eff
+                and abs((other["start"] - start_eff).total_seconds()) <= 30*60):
                 has_direct_above = True
                 above_event = other
                 break
@@ -1209,8 +1226,8 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         max_w_occ = max_w_time
         for other in events:
             if (other["layer_index"] == event["layer_index"] + 1
-                and start < other["end"] and other["start"] < end
-                and (other["start"] - start).total_seconds() < 30*60):
+                and start_eff < other["end"] and other["start"] < end_eff
+                and (other["start"] - start_eff).total_seconds() < 30*60):
                 other_w  = total_width * other["width_frac"]
                 other_x  = grid_right - other_w
                 avail    = other_x - title_x_start - 2
@@ -1241,8 +1258,8 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         above_event = None
         for other in events:
             if other["layer_index"] == event["layer_index"] + 1:
-                if start < other["end"] and other["start"] < end:
-                    delta = (other["start"] - start).total_seconds()
+                if start_eff < other["end"] and other["start"] < end_eff:
+                    delta = (other["start"] - start_eff).total_seconds()
                     if delta < 30 * 60:
                         has_direct_above = True
                         above_event = other
