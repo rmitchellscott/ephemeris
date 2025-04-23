@@ -1164,6 +1164,8 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         c.setFillColor(css_color_to_hex(EVENT_FILL))
         draw_rect_with_optional_round(c, box_x+ color_bar_width, clamped_y_end, box_width - color_bar_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=1,fill=1)
 
+        if start.hour < START_HOUR or start.hour >= END_HOUR:
+            continue
         c.setFillGray(0)
         duration_minutes = (end - start).total_seconds() / 60
 
@@ -1262,6 +1264,16 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         move_time = (has_direct_above and duration_minutes >= 60) or should_move_for_title
 
         c.setFont("Montserrat-Regular", time_font_size)
+
+        # Handle edge case where moving the time would force it off the grid
+        if move_time:
+            # compute the would-be y_time for the moved label
+            y_title = y_start - title_y_offset
+            y_time  = y_title - (text_padding / 2) - time_y_offset
+            # if that y_time falls below grid_bottom, don’t move it
+            if y_time < layout["grid_bottom"]:
+                move_time = False
+                hide_time = True
         if hide_time:
             print(
                 f"ℹ️ HIDING time for '{title}' ({int(duration_minutes)} min) "
