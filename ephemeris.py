@@ -605,17 +605,35 @@ def get_layout_config(width, height, start_hour=6, end_hour=17):
     # Buffer below time grid
     bottom_buffer = float(os.getenv("PDF_GRID_BOTTOM_BUFFER", 9))
 
+    # Feature Flags Affecting Grid
+    minical_mode = os.getenv("DRAW_MINICALS", "full").strip().lower()
+    DRAW_MINICALS = minical_mode not in ("false", "0", "no")
+    DRAW_ALL_DAY  = os.getenv("DRAW_ALL_DAY",  "true").lower() in ("1","true","yes")
+
     # Compute vertical extents for the grid
     grid_top    = page_top - heading_ascent - (4 * element_pad)
+
     grid_bottom = page_bottom + bottom_buffer
 
     # Compute horizontal extents for the grid
     grid_left  = page_left + time_label_width
     grid_right = page_right
 
+    # Recompute grid_top so it floats up when we skip the minis or all‑day band
+    # Start from the page_top
+    if DRAW_MINICALS:
+        # subtract the vertical space occupied by the two mini‑cals + padding
+        mini_total_height = mini_block_h + (2 * mini_text_pad)
+        grid_top -= mini_total_height
+
+    if DRAW_ALL_DAY:
+        if not DRAW_MINICALS:
+        # note: band_height is mini_h + 2*mini_text_pad in your code
+            band_height = mini_block_h + (2 * mini_text_pad)
+            grid_top -= band_height
+
     # How many hours will be shown
     hours_shown  = end_hour - start_hour
-    print(f"⚙️ Hours to show: {hours_shown!r}")
     available_h  = grid_top - grid_bottom
     hour_height  = available_h / hours_shown
 
@@ -932,23 +950,10 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
     # Recompute grid_top so it floats up when we skip the minis or all‑day band
     # Start from the page_top
 
-    if DRAW_MINICALS:
-        # subtract the vertical space occupied by the two mini‑cals + padding
-        mini_total_height = layout["mini_block_h"] + (2 * mini_text_pad)
-        # mini_total_height = layout["mini_block_h"] +  mini_text_pad + element_pad
-        grid_top -= mini_total_height
-
+    # Force right alignment of mini-cals if we're drawing the all-day band
     if DRAW_ALL_DAY:
         MINICAL_ALIGN = "right"
-        if not DRAW_MINICALS:
-        # note: band_height is mini_h + 2*mini_text_pad in your code
-            band_height = layout["mini_block_h"] + (2 * mini_text_pad)
-            grid_top -= band_height
 
-    # overwrite the layout so the rest of the function uses our shifted value
-    layout["grid_top"] = grid_top
-
-    
     # Header/title
     c.setFillGray(0)
     title_y = page_top - heading_ascent # Pin ascenders to page_top
@@ -1142,7 +1147,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         
 
         c.setFillColor(css_color_to_hex(EVENT_FILL))
-        draw_rect_with_optional_round(c, box_x+ color_bar_width, clamped_y_end, box_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=1,fill=1)
+        draw_rect_with_optional_round(c, box_x+ color_bar_width, clamped_y_end, box_width - color_bar_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=1,fill=1)
 
         c.setFillGray(0)
         duration_minutes = (end - start).total_seconds() / 60
@@ -1275,6 +1280,14 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         c.setFillColor(css_color_to_hex(FOOTER_COLOR))
         c.drawCentredString(width/2, page_bottom, footer_text)
     
+    # # RENDER MARGINS FOR TESTING
+    # c.setStrokeGray(0.4)
+    # c.setLineWidth(0.5)
+    # c.line(page_right, page_top, page_right, page_bottom)
+    # c.line(page_left, page_top, page_left, page_bottom)
+    # c.line(page_right, page_top, page_left, page_top)
+    # c.line(page_right, page_bottom, page_left, page_bottom)
+
     c.save()
     if FORMAT == "png":
         from pdf2image import convert_from_path
