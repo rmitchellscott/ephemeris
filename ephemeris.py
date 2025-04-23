@@ -277,7 +277,7 @@ def draw_mini_cal(c, year, month, weeks, x, y, mini_w, mini_h, highlight_day=Non
                 # normal day, centered
                 c.drawCentredString(cx, yy + v_off, str(day))
 def get_page_size():
-    env_size = os.getenv("PDF_PAGE_SIZE", "1872x1404")  # Default to reMarkable 2
+    env_size = os.getenv("PDF_PAGE_SIZE", "1404x1872")  # Default to reMarkable 2
     env_dpi = float(os.getenv("PDF_DPI", "226"))        # Default to reMarkable 2 DPI
     try:
         px_width, px_height = map(int, env_size.lower().split("x"))
