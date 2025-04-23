@@ -389,6 +389,9 @@ def filter_events_for_day(events, target_date):
         if local_start.hour < EXCLUDE_BEFORE:
             print(f"⏰  Dropped (too early): {title!r} at hour {local_start.hour}")
             continue
+        if local_start.hour >= END_HOUR:
+            print(f"⏰  Dropped (after end hour): {title!r} at {local_start.hour}")
+            continue
         # 3) not canceled
         title_lower     = title.lower()
         status          = meta.get("status", "").lower()
