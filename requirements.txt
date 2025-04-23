@@ -4,5 +4,5 @@ pyyaml
 requests
 icalendar
 webcolors
-pdf2image
 PyPDF2
+pdfrw

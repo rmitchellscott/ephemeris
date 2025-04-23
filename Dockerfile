@@ -7,6 +7,8 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 COPY fonts /app/fonts
+COPY assets/cover.pdf /app/assets/cover.pdf
+
 COPY requirements.txt .
 
 RUN pip install --upgrade pip setuptools wheel \
