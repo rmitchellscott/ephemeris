@@ -615,6 +615,7 @@ def get_layout_config(width, height, start_hour=6, end_hour=17):
 
     # How many hours will be shown
     hours_shown  = end_hour - start_hour
+    print(f"⚙️ Hours to show: {hours_shown!r}")
     available_h  = grid_top - grid_bottom
     hour_height  = available_h / hours_shown
 
@@ -644,6 +645,56 @@ def time_to_y(dt, layout):
     # Convert a datetime to a vertical position inside the grid
     elapsed = (dt.hour + dt.minute / 60) - layout["start_hour"]
     return layout["grid_top"] - elapsed * layout["hour_height"]
+
+def draw_rect_with_optional_round(c, x, y, w, h, radius,
+                                  round_top=True, round_bottom=True,
+                                  stroke=1, fill=1):
+    """
+    Draws a rectangle at (x,y) of width w, height h.
+    If round_bottom is True, rounds the bottom two corners with `radius`.
+    If round_top is   True, rounds the top two corners.
+    Otherwise corners are square.
+    """
+    p = c.beginPath()
+    # start at bottom-left
+    if round_bottom:
+        p.moveTo(x + radius, y)
+    else:
+        p.moveTo(x, y)
+
+    # bottom edge
+    if round_bottom:
+        p.lineTo(x + w - radius, y)
+        p.arcTo(x + w - 2*radius, y, x + w, y + 2*radius,
+                startAng=270, extent=90)
+    else:
+        p.lineTo(x + w, y)
+
+    # right edge
+    if round_top:
+        p.lineTo(x + w, y + h - radius)
+        p.arcTo(x + w - 2*radius, y + h - 2*radius, x + w, y + h,
+                startAng=0, extent=90)
+    else:
+        p.lineTo(x + w, y + h)
+
+    # top edge
+    if round_top:
+        p.lineTo(x + radius, y + h)
+        p.arcTo(x, y + h - 2*radius, x + 2*radius, y + h,
+                startAng=90, extent=90)
+    else:
+        p.lineTo(x, y + h)
+
+    # left edge
+    if round_bottom:
+        p.lineTo(x, y + radius)
+        p.arcTo(x, y, x + 2*radius, y + 2*radius,
+                startAng=180, extent=90)
+    else:
+        p.lineTo(x, y)
+
+    c.drawPath(p, stroke=stroke, fill=fill)
 
 def render_time_grid(c, date_label, layout):
     # Vertical line
@@ -1070,6 +1121,14 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         box_width = total_width * width_frac
 
         box_x = grid_right - box_width  # right-align
+
+        clamped_y_start = min(y_start, layout["grid_top"])
+        clamped_y_end   = max(y_end,   layout["grid_bottom"])
+        clamped_h       = clamped_y_start - clamped_y_end
+
+        breached_top    = (y_start > layout["grid_top"])
+        breached_bottom = (y_end   < layout["grid_bottom"])
+
         # print(f"📦 Event: '{title}' | box_x: {box_x:.2f} | box_width: {box_width:.2f} | box_height: {box_height:.2f}")
 
         hex_color = meta.get("calendar_color", "#DDDDDD")
@@ -1079,10 +1138,11 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         c.setStrokeColor(css_color_to_hex(EVENT_STROKE))
         c.setLineWidth(.33)
         c.setFillColor(HexColor(hex_color))
-        c.roundRect(box_x, y_end, box_width, box_height,radius, stroke=0, fill=1)
+        draw_rect_with_optional_round(c, box_x, clamped_y_end, box_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=0,fill=1)
+        
 
         c.setFillColor(css_color_to_hex(EVENT_FILL))
-        c.roundRect(box_x + color_bar_width, y_end, box_width, box_height, radius, stroke=1, fill=1)
+        draw_rect_with_optional_round(c, box_x+ color_bar_width, clamped_y_end, box_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=1,fill=1)
 
         c.setFillGray(0)
         duration_minutes = (end - start).total_seconds() / 60
@@ -1205,7 +1265,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
             c.drawRightString(box_x + box_width - text_padding, y_time, time_label)
 
     now = datetime.now(tz_local)
-    footer = os.getenv("FOOTER", "updated")
+    footer = os.getenv("FOOTER", "E P H E M E R I S")
     if footer == "updated":
         footer_text  = now.strftime("Updated: %Y-%m-%d %H:%M %Z")
     else:
