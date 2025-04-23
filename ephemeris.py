@@ -27,7 +27,11 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor, black, white
 from reportlab.pdfbase import pdfmetrics
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
+from pdfrw import PdfReader
+from pdfrw.buildxobj import pagexobj
+from pdfrw.toreportlab import makerl
 from PyPDF2 import PdfMerger
 
 DEBUG_LAYERS = os.getenv("DEBUG_LAYERS", "false").lower() in ("1", "true", "yes")
@@ -51,6 +55,7 @@ FOOTER_COLOR = os.getenv("FOOTER_COLOR", "gray(60%)")
 print("Timezone:", timezone_str)
 CONFIG_PATH = "config.yaml"
 OUTPUT_PDF = "output/daily_schedule.pdf"
+COVER_PAGE = os.getenv("COVER_PAGE", "true").lower() not in ("0", "false", "no")
 META_FILE = Path("feeds_meta.yaml")
 FORCE_REFRESH = os.getenv("FORCE_REFRESH", "false").lower() in ("1", "true", "yes")
 
@@ -136,6 +141,7 @@ def css_color_to_hex(name_or_hex: str) -> str:
     except ValueError:
         print(f"⚠️ Unknown CSS color '{name_or_hex}', passing through")
         return name_or_hex
+
 def draw_gray_strip(c, page_width, strip_height=20):
     """
     Draws a horizontal strip of gray0–gray15 at the bottom of the canvas.
@@ -161,7 +167,7 @@ def fmt_time(dt):
         return dt.strftime("%H:%M")
     else:
         return dt.strftime("%-I:%M %p")
-    
+
 def parse_date_range(s: str, tzinfo) -> list[date]:
     """Given “YYYY‑MM‑DD:YYYY‑MM‑DD”, “this week”, “this month” or a single date,
     return a list of date objects in that range (inclusive)."""
@@ -251,7 +257,7 @@ def draw_mini_cal(c, year, month, weeks, x, y, mini_w, mini_h, highlight_day=Non
             # center of the cell
             cx = xx + cell_w/2
             # vertical offset: roughly center. adjust v_off if you like.
-            v_off = cell_h/2 - 2  
+            v_off = cell_h/2 - 2
 
             if highlight_day and day == highlight_day:
                 # draw black highlight box
@@ -672,7 +678,7 @@ def get_layout_config(width, height, start_hour=6, end_hour=17):
         "text_padding":     text_padding,
         "page_bottom":      page_bottom,
         "mini_block_h":     mini_block_h,
-        
+
     }
 def time_to_y(dt, layout):
     # Convert a datetime to a vertical position inside the grid
@@ -745,7 +751,7 @@ def render_time_grid(c, date_label, layout):
     c.setFont("Montserrat-SemiBold", 10)
     c.drawString((layout["grid_left"] +0.25), (layout["grid_top"] + 0.25 + layout["text_padding"]), "Schedule")
 
-    # Draw the horizontal hour lines and labels 
+    # Draw the horizontal hour lines and labels
     for hour in range(layout["start_hour"], layout["end_hour"] + 1):
         y = time_to_y(datetime.combine(date_label, time(hour=hour)), layout)
         # Emphasize the start hour
@@ -906,7 +912,7 @@ def expand_event_for_day(comp, color, tz_factory, target_date, tz_local):
                     dt = tz_local.localize(dt)
                 exdates.add(dt)
     for occ in rule.between(day_start, day_end, inc=True):
-        if occ in overrides:  
+        if occ in overrides:
             print(
                 f"🔄 Skipping master occurrence for "
                 f"{str(comp.get('SUMMARY','Untitled'))!r} "
@@ -932,6 +938,58 @@ def expand_event_for_day(comp, color, tz_factory, target_date, tz_local):
         instances.append((st, en, comp.get("SUMMARY", "Untitled"), meta))
 
     return instances
+
+def render_cover(
+        merger,
+        temp_files, 
+        cover_src_pdf: str,
+        page_w_pt: float,
+        page_h_pt: float,
+        cover_pdf_path: str = "/tmp/cover.pdf"
+    ):
+        """
+        Embed cover_src_pdf (an existing single-page PDF) as a fully-vector Form XObject,
+        scaled to COVER_WIDTH_FRAC of page width and vertically offset by COVER_VERT_FRAC,
+        then append to the merger.
+        """
+        # Configuration fractions
+        target_w_frac = float(os.getenv("COVER_WIDTH_FRAC", 0.75))
+        v_frac        = float(os.getenv("COVER_VERT_FRAC",   0.25))
+
+        # 1) Compute target width in points
+        target_w_pt = page_w_pt * target_w_frac
+
+        # 2) Read & wrap first page of provided PDF as XObject
+        reader     = PdfReader(cover_src_pdf)
+        page_xobj  = pagexobj(reader.pages[0])
+
+        # 3) Create a new canvas for the cover page
+        c = canvas.Canvas(cover_pdf_path, pagesize=(page_w_pt, page_h_pt))
+        form = makerl(c._doc, page_xobj)
+
+        # 4) Compute original PDF dims in points
+        orig_w_pt = page_xobj.BBox[2] - page_xobj.BBox[0]
+        orig_h_pt = page_xobj.BBox[3] - page_xobj.BBox[1]
+        # scale to target width
+        scale     = target_w_pt / orig_w_pt
+        scaled_h  = orig_h_pt * scale
+
+        # 5) Position for centering + offset
+        x = (page_w_pt - target_w_pt) / 2.0
+        y = (page_h_pt - scaled_h) * (1 - v_frac)
+
+        # 6) Draw the XObject
+        c.saveState()
+        c.translate(x, y)
+        c.scale(scale, scale)
+        c.doForm(form)
+        c.restoreState()
+
+        # 7) Finish and append
+        c.showPage()
+        c.save()
+        merger.append(cover_pdf_path)
+        temp_files.append(cover_pdf_path)
 
 def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=None):
     width, height = get_page_size()
@@ -1029,7 +1087,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         )
 
         # Compute label‐column width
-        c.setFont("Montserrat-SemiBold", all_day_label_font_size) 
+        c.setFont("Montserrat-SemiBold", all_day_label_font_size)
         label_w = max(c.stringWidth(line, "Montserrat-SemiBold", all_day_label_font_size)
                         for line in label_lines)
         label_area = label_w + 2*text_padding
@@ -1106,7 +1164,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         cal = calendar.Calendar(firstweekday=6)
         weeks1 = cal.monthdayscalendar(first_of_month.year, first_of_month.month)
         weeks2 = cal.monthdayscalendar(next_month.year, next_month.month)
-        
+
         draw_mini_cal(c, first_of_month.year, first_of_month.month,
                     weeks1, x_start, y_cal, mini_w, mini_h,
                     highlight_day=today.day)
@@ -1176,7 +1234,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         c.setLineWidth(.33)
         c.setFillColor(HexColor(hex_color))
         draw_rect_with_optional_round(c, box_x, clamped_y_end, box_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=0,fill=1)
-        
+
 
         c.setFillColor(css_color_to_hex(EVENT_FILL))
         draw_rect_with_optional_round(c, box_x+ color_bar_width, clamped_y_end, box_width - color_bar_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=1,fill=1)
@@ -1245,7 +1303,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
             ):
                 display_title = display_title[:-1]
             display_title = display_title.rstrip() + "..."
-            
+
         # Draw title
         y_text = y_start - title_y_offset
         c.drawString(box_x + 2 + text_padding, y_text, display_title)
@@ -1303,7 +1361,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
                 f"due to {'title too long' if should_move_for_title else 'above-event'}"
             )
             y_title = y_start - title_y_offset
-            y_time  = y_title - (text_padding / 2) - time_y_offset 
+            y_time  = y_title - (text_padding / 2) - time_y_offset
             x_time  = box_x + 2 + text_padding
             c.drawString(x_time, y_time, time_label)
         else:
@@ -1323,7 +1381,7 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
         c.setFont("Montserrat-Light", 6)
         c.setFillColor(css_color_to_hex(FOOTER_COLOR))
         c.drawCentredString(width/2, page_bottom, footer_text)
-    
+
     # # RENDER MARGINS FOR TESTING
     # c.setStrokeGray(0.4)
     # c.setLineWidth(0.5)
@@ -1333,20 +1391,20 @@ def render_schedule_pdf(timed_events, output_path, date_label, all_day_events=No
     # c.line(page_right, page_bottom, page_left, page_bottom)
 
     c.save()
-    if FORMAT == "png":
-        from pdf2image import convert_from_path
-        dpi = int(os.getenv("PDF_DPI", 226))
-        pages = convert_from_path(OUTPUT_PDF, dpi=dpi)
+    # if FORMAT == "png":
+    #     from pdf2image import convert_from_path
+    #     dpi = int(os.getenv("PDF_DPI", 226))
+    #     pages = convert_from_path(OUTPUT_PDF, dpi=dpi)
 
-        png_path = OUTPUT_PDF.replace(".pdf", ".png")
-        pages[0].save(png_path, "PNG")
-        print(f"📷 Wrote PNG → {png_path}")
-    else:
-        print(f"📄 Wrote PDF → {OUTPUT_PDF}")
+    #     png_path = OUTPUT_PDF.replace(".pdf", ".png")
+    #     pages[0].save(png_path, "PNG")
+    #     print(f"📷 Wrote PNG → {png_path}")
+    # else:
+    #     print(f"📄 Wrote PDF → {OUTPUT_PDF}")
 if __name__ == "__main__":
     timezone_str = os.getenv("TIMEZONE","UTC")
     tz_local     = tz.gettz(timezone_str)
-    OUTPUT_PDF = os.getenv("OUTPUT_PDF","output/daily_schedule.pdf")
+    OUTPUT_PDF = os.getenv("OUTPUT_PDF","output/ephemeris.pdf")
     # Allow a date‐range via DATE_RANGE, or fall back to TARGET_DATE/single‐day
     dr = os.getenv("DATE_RANGE")  # e.g. "this week", "2025-04-01:2025-04-07"
     if dr:
@@ -1396,6 +1454,11 @@ if __name__ == "__main__":
     for cal_name, cnt in counts.items():
         print(f"   • {cal_name!r}: {cnt} events")
 
+    if COVER_PAGE:
+        page_w, page_h = get_page_size()
+        svg = os.getenv("COVER_SVG_PATH", "assets/cover.pdf")
+        render_cover(merger, temp_files, svg, page_w, page_h)
+
     for d in date_list:
         # 1) Build unique_instances for date d:
         unique_instances = []
@@ -1404,7 +1467,7 @@ if __name__ == "__main__":
             for start, end, title, meta in expand_event_for_day(comp, color, tzf, d, tz_local):
                 # key = (meta.get("uid"), start.isoformat(), title)
                 key = (meta.get("uid"))
-                if key in seen: 
+                if key in seen:
                     print(
                         f"⚠️  Skipping duplicate: "
                         f"UID={meta.get('uid')!r}, start={start.isoformat()}, title={title!r}"
@@ -1422,7 +1485,7 @@ if __name__ == "__main__":
         temp_files.append(tmp)
 
     # 4) Write out the merged multi-page PDF:
-    out = os.getenv("OUTPUT_PDF", "output/daily_schedule.pdf")
+    out = os.getenv("OUTPUT_PDF", "output/ephemeris.pdf")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "wb") as f:
         merger.write(f)

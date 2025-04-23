@@ -45,7 +45,7 @@ calendars:
     color: gray4
 
 ```
-Supported values for colors are CSS names, hex colors, as well as a series of grays (gray1 through gray14) that correspond to each step of 4-bit grayscale. 
+Supported values for colors are CSS names, hex colors, as well as a series of grays (gray1 through gray14) that correspond to each step of 4-bit grayscale.
 
 ### Docker Compose
 
@@ -116,13 +116,16 @@ python ephemeris.py
 | Variable       | Default                   | Example          | Description                                                                          |
 |:---------------|:--------------------------|:-----------------|:-------------------------------------------------------------------------------------|
 | FORCE_REFRESH  | false           | true, false                        |      Skip the changed events check and always render a PDF for each run. |
-| OUTPUT_PDF     | output/daily_schedule.pdf |                          | Path and name for rendered PDF.  |
+| OUTPUT_PDF     | output/ephemeris.pdf |                               | Path and name for rendered PDF.  |
 
 ### Document Rendering
 
 | Variable       | Default                   | Example          | Description                                                                          |
 |:---------------|:--------------------------|:-----------------|:-------------------------------------------------------------------------------------|
 | ALLDAY_FROM    | grid            | grid, page                         | Select the left boundry for the "All-Day Events" box, either the main time grid or the left margin.   |
+| COVER_PAGE     | true            | true, false                        | Print a cover page with SVG as the rendered PDF's first page.         |
+| COVER_WIDTH_FRAC | 0.75          | 0 - 1                              | Fraction of page width to draw the cover SVG.                         |
+| COVER_VERT_FRAC | 0.25           | 0 - 1                              | Fraction of page height to center the cover SVG.                      |
 | DRAW_ALL_DAY   | true            | true, false                        | Set to `true` to draw the All Day Events, set to `false` to disable.  |
 | DRAW_MINICALS  | full            | full, current, false               | `full` will draw mini-calendars for the current and next month, `current` will draw only the current month, `false` will disable. |
 | EVENT_FILL     | gray14          | black,gray0, #000000               | Color for the background of events. CSS names, Ephemeris gray names, and hex supported. |
@@ -134,12 +137,12 @@ python ephemeris.py
 | MINICAL_HEIGHT | 60              | 40                                 | Height of mini-calendars and All-Day Events area in points (1pt = 1/72in).   |
 | MINICAL_GAP    | 10              | 12                                 | Gap between each calender, and between calendars and other elements. In points (1pt = 1/72in).   |
 | PDF_DPI        | 226             | 300                                | DPI/PPI for rendered PDF.   |
-| PDF_PAGE_SIZE  | 1872x1404       | 1920x1080                          | Resolution for rendered PDF.   |
+| PDF_PAGE_SIZE  | 1872x1404       | 1080x1920                          | Resolution for rendered PDF.   |
 | PDF_MARGIN_LEFT        | 6       | 12                                 | Left page margin in points (1pt = 1/72in).   |
 | PDF_MARGIN_RIGHT       | 6       | 12                                 | Right page margin in points (1pt = 1/72in).   |
 | PDF_MARGIN_TOP         | 9       | 12                                 | Top page margin in points (1pt = 1/72in).   |
 | PDF_MARGIN_BOTTOM      | 6       | 12                                 | Bottom page margin in points (1pt = 1/72in).   |
-| PDF_GRID_BOTTOM_BUFFER | 9       | 12                                 | Buffer between the bottom of the grid and the bottom margin in points (1pt = 1/72in). Useful for having a footer.  |  
+| PDF_GRID_BOTTOM_BUFFER | 9       | 12                                 | Buffer between the bottom of the grid and the bottom margin in points (1pt = 1/72in). Useful for having a footer.  |
 
 ## License
 
