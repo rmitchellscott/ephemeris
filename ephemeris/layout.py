@@ -29,8 +29,8 @@ def get_layout_config(width, height, start_hour=6, end_hour=17):
     bottom_buffer = settings.PDF_GRID_BOTTOM_BUFFER
 
     # Feature Flags Affecting Grid
-    minical_mode = settings.DRAW_MINICALS
-    DRAW_MINICALS = minical_mode not in ("false", "0", "no")
+    minical_mode = settings.minical_mode
+    DRAW_MINICALS = settings.DRAW_MINICALS
 
     # Compute vertical extents for the grid
     grid_top    = page_top - heading_ascent - (4 * element_pad)

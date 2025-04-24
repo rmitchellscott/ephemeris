@@ -27,6 +27,7 @@ def main():
 
     # 2) Determine local timezone
     tz_local = settings.TZ_LOCAL
+    print(f"TZ_LOCAL = {tz_local!r}   type={type(tz_local)}")
     print(f"Timezone: {settings.TIMEZONE}")
 
     # 3) Build list of dates to render
@@ -93,7 +94,8 @@ def main():
 
         # render schedule
         tmp = f"/tmp/schedule_{d.isoformat()}.pdf"
-        render_schedule_pdf(timed, tmp, d, all_day_events=all_day)
+        # render_schedule_pdf(timed, tmp, d, all_day_events=all_day)
+        render_schedule_pdf(timed, tmp, d, all_day_events=all_day, tz_local=settings.TZ_LOCAL)
         merger.append(tmp)
         temp_files.append(tmp)
 

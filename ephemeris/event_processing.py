@@ -1,13 +1,16 @@
-from datetime import datetime, timedelta, date
+from datetime import datetime, date, time, timedelta
 from collections import defaultdict, deque
-
+import pytz
 from dateutil.rrule import rrulestr
 
 import ephemeris.settings as settings
-from ephemeris.utils import css_color_to_hex, fmt_time
+from ephemeris.utils import fmt_time
 
-def assign_stacks(events):
-    # Helper to detect overlap
+
+def assign_stacks(events: list[tuple]) -> list[dict]:
+    """
+    Compute non-overlapping layers and width fractions for events.
+    """
     def overlaps(e1, e2):
         return e1[0] < e2[1] and e2[0] < e1[1]
 
@@ -36,66 +39,55 @@ def assign_stacks(events):
 
     result = []
     for cluster in clusters:
-        # Prepare list of (idx, event)
         cluster_events = [(i, events[i]) for i in cluster]
-
-        # Dynamic layer assignment: longer events first
-        layers = []         # list of lists of (start,end)
-        assignments = {}    # event idx -> layer index
-
-        # Sort by duration descending, then by start ascending
-        sorted_by_duration = sorted(
+        # Sort by duration descending, start ascending
+        sorted_events = sorted(
             cluster_events,
             key=lambda x: (-(x[1][1] - x[1][0]).total_seconds(), x[1][0])
         )
-
-        for idx, (start, end, title, meta) in sorted_by_duration:
+        layers = []
+        assignments = {}
+        for idx, (start, end, *_ ) in sorted_events:
             placed = False
-            for layer_index, layer in enumerate(layers):
-                # if no overlap with existing items in this layer
-                if all(end <= s or start >= e for (s, e) in layer):
+            for li, layer in enumerate(layers):
+                if all(end <= s or start >= e for s, e in layer):
                     layer.append((start, end))
-                    assignments[idx] = layer_index
+                    assignments[idx] = li
                     placed = True
                     break
             if not placed:
-                # new layer
                 layers.append([(start, end)])
                 assignments[idx] = len(layers) - 1
 
         max_depth = len(layers)
-        # ── DEBUG DUMP ─────────────────────────────
         if settings.DEBUG_LAYERS:
-            print("🔍  Debug: event layers for this cluster:")
-            for idx, (start, end, title, meta) in cluster_events:
-                li = assignments[idx]              # safe now, idx ∈ cluster
+            print("🔍 Debug: event layers:")
+            for idx, (start, end, title, _) in cluster_events:
+                li = assignments[idx]
                 ts = lambda dt: dt.astimezone(settings.TZ_LOCAL).strftime("%H:%M")
-                clean_title = str(title)    # title is your vText instance
-                print(f"   • Layer {li}: {clean_title} [{ts(start)} → {ts(end)}]")
-            print("🔍  End debug dump\n")
-        # ────────────────────────────────────────────
+                print(f"  • Layer {li}: {title} [{ts(start)}→{ts(end)}]")
 
-        # Compute width fraction for each event in cluster
         for idx, (start, end, title, meta) in cluster_events:
-            layer_index = assignments[idx]
-            width_frac  = (max_depth - layer_index) / max_depth
+            li = assignments[idx]
+            wf = (max_depth - li) / max_depth
             result.append({
-                "start":       start,
-                "end":         end,
-                "title":       title,
-                "meta":        meta,
-                "width_frac":  width_frac,
-                "layer_index": layer_index
+                'start': start,
+                'end': end,
+                'title': title,
+                'meta': meta,
+                'layer_index': li,
+                'width_frac': wf
             })
 
     return result
 
+
 def build_override_map(raw_events: list[tuple]) -> dict:
     """
-    Build a mapping from event UID to a set of overridden recurrence datetimes.
+    Map UID to overridden recurrence datetimes.
     """
     override_map = defaultdict(set)
-    for comp, _, _, _ in raw_events:
+    for comp, *_ in raw_events:
         rid = comp.get('RECURRENCE-ID')
         if rid:
             dt = comp.decoded('RECURRENCE-ID')
@@ -106,162 +98,131 @@ def build_override_map(raw_events: list[tuple]) -> dict:
 
 def expand_event_for_day(
     comp,
-    color,
+    color: str,
     tz_factory,
     target_date: date,
     tz_local,
     override_map: dict
 ) -> list[tuple]:
-    from datetime import datetime, timedelta, time
-    import pytz
-    from dateutil.rrule import rrulestr
-
+    """
+    Expand a VEVENT for one day, handling one-offs, recurrences, and all-day events.
+    Returns list of (start_local, end_local, title, meta).
+    """
     instances = []
-    uid        = comp.get("UID")
+    uid = comp.get('UID')
 
-    # 0) Decode raw start/end and attach tzinfo
-    start = comp.decoded("dtstart")
-    end   = comp.decoded("dtend") if comp.get("dtend") \
-            else start + comp.decoded("duration") if comp.get("duration") \
-            else start
+    # Decode raw DTSTART and DTEND or duration
+    start_raw = comp.decoded('dtstart')
+    if comp.get('dtend'):
+        end_raw = comp.decoded('dtend')
+    elif comp.get('duration'):
+        end_raw = start_raw + comp.decoded('duration')
+    else:
+        end_raw = start_raw
 
-    # Normalize start
-    if isinstance(start, datetime) and start.tzinfo is None:
-        tzid = comp['dtstart'].params.get('TZID')
-        if tz_factory and tzid:
-            try:
-                tzinfo = tz_factory.get(tzid)
-            except Exception:
-                tzinfo = pytz.UTC
+    def normalize(dt_raw, param_name):
+        # date-only to midnight
+        if isinstance(dt_raw, date) and not isinstance(dt_raw, datetime):
+            dt = datetime.combine(dt_raw, time.min)
         else:
-            tzinfo = pytz.UTC
-        start = start.replace(tzinfo=tzinfo)
-    start = start.astimezone(tz_local)
-
-    # Normalize end the same way
-    if isinstance(end, datetime) and end.tzinfo is None:
-        tzid_end = comp.get('dtend', comp.get('dtstart')).params.get('TZID')
-        if tz_factory and tzid_end:
-            try:
-                tzinfo = tz_factory.get(tzid_end)
-            except Exception:
-                tzinfo = pytz.UTC
-        else:
-            tzinfo = pytz.UTC
-        end = end.replace(tzinfo=tzinfo)
-    end = end.astimezone(tz_local)
-
-
-    tzid = comp["dtstart"].params.get("TZID")
-    for dt in (start, end):
-        if dt.tzinfo is None:
-            if tz_factory and tzid in tz_factory._ttinfo_cache:
-                dt = dt.replace(tzinfo=tz_factory.get(tzid))
+            dt = dt_raw
+        # attach tzinfo if missing
+        if isinstance(dt, datetime) and dt.tzinfo is None:
+            tzid = comp[param_name].params.get('TZID') if comp.get(param_name) else None
+            if tz_factory and tzid:
+                try:
+                    tzinfo = tz_factory.get(tzid)
+                except Exception:
+                    tzinfo = pytz.UTC
             else:
-                dt = dt.replace(tzinfo=pytz.UTC)
+                tzinfo = pytz.UTC
+            dt = dt.replace(tzinfo=tzinfo)
+        # convert to local
+        if isinstance(dt, datetime):
+            dt = dt.astimezone(tz_local)
+        return dt
 
-    # 1) All-day (flagged or spans midnight)
-    start_local = start.astimezone(tz_local)
-    end_local   = end.astimezone(tz_local)
-    sod         = datetime.combine(target_date, time.min).replace(tzinfo=tz_local)
-    sod_next    = sod + timedelta(days=1)
-    is_flagged  = comp.get("DTSTART").params.get("VALUE") == "DATE"
-    spans_mid   = (start_local <= sod and end_local >= sod_next)
-    if is_flagged or spans_mid:
-        meta = {"uid": uid, "calendar_color": color, "all_day": True}
-        return [(sod, sod_next, str(comp.get("SUMMARY","")), meta)]
+    start = normalize(start_raw, 'dtstart')
+    end   = normalize(end_raw, 'dtend')
 
-    # 2) Recurring?
-    raw_rr = comp.get("RRULE")
+    # All-day: flagged or spans midnight
+    sod = datetime.combine(target_date, time.min).replace(tzinfo=tz_local)
+    sod_next = sod + timedelta(days=1)
+    is_flagged = comp.get('DTSTART').params.get('VALUE') == 'DATE'
+    if is_flagged or (start <= sod and end >= sod_next):
+        meta = {'uid': uid, 'calendar_color': color, 'all_day': True}
+        return [(sod, sod_next, str(comp.get('SUMMARY','')), meta)]
+
+    # Recurring
+    raw_rr = comp.get('RRULE')
     if raw_rr:
-        rule = rrulestr(raw_rr.to_ical().decode(), dtstart=start)
-        day_start = sod
-        day_end   = sod_next
+        rule = rrulestr(raw_rr.to_ical().decode(), dtstart=start_raw if isinstance(start_raw, datetime) else None)
+        # build exdates
         exdates = set()
-        ex_prop = comp.get("EXDATE")
+        ex_prop = comp.get('EXDATE')
         if ex_prop:
-            ex_props = ex_prop if isinstance(ex_prop, list) else [ex_prop]
-            for p in ex_props:
-                for exdt in getattr(p, "dts", []):
+            ex_list = ex_prop if isinstance(ex_prop, list) else [ex_prop]
+            for prop in ex_list:
+                for exdt in getattr(prop, 'dts', []):
                     dt0 = exdt.dt
                     if isinstance(dt0, datetime) and dt0.tzinfo is None:
                         dt0 = dt0.replace(tzinfo=tz_local)
                     exdates.add(dt0)
-
-        for occ in rule.between(day_start, day_end, inc=True):
+        for occ in rule.between(sod, sod_next, inc=True):
             if occ in override_map.get(uid, set()) or occ in exdates:
                 continue
-            st_local = occ.astimezone(tz_local)
-            en_local = (occ + (end - start)).astimezone(tz_local)
-            meta     = {"uid": uid, "calendar_color": color, "all_day": False}
-            instances.append((st_local, en_local, str(comp.get("SUMMARY","")), meta))
-
+            st = occ.astimezone(tz_local)
+            en = (occ + (end - start)).astimezone(tz_local)
+            meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
+            instances.append((st, en, str(comp.get('SUMMARY','')), meta))
         return instances
 
-    # 3) One-off
-    if start_local.date() == target_date:
-        meta = {"uid": uid, "calendar_color": color, "all_day": False}
-        instances.append((start_local, end_local, str(comp.get("SUMMARY","")), meta))
+    # One-off
+    if isinstance(start, datetime) and start.date() == target_date:
+        meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
+        instances.append((start, end, str(comp.get('SUMMARY','')), meta))
 
     return instances
 
 
 def split_all_day_events(events: list[tuple], target_date: date, tz_local) -> tuple:
-    """
-    Separate events into all-day and timed lists.
-    """
-    all_day = []
-    timed = []
-    start_of_day = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=tz_local)
-    start_of_next = start_of_day + timedelta(days=1)
+    all_day, timed = [], []
+    sod = datetime.combine(target_date, time.min).replace(tzinfo=tz_local)
+    sod_next = sod + timedelta(days=1)
     for st, en, title, meta in events:
-        if meta.get('all_day') or (st <= start_of_day and en >= start_of_next):
+        if meta.get('all_day') or (st <= sod and en >= sod_next):
             all_day.append((st, en, title, meta))
         else:
             timed.append((st, en, title, meta))
     return all_day, timed
 
 
-def filter_events_for_day(events, target_date):
-    cancel_variants = ("cancelled","canceled")
+def filter_events_for_day(events: list[tuple], target_date: date) -> list[tuple]:
+    cancel_variants = ('cancelled','canceled')
     kept = []
     for st, en, title, meta in events:
-        local_start = st.astimezone(settings.TZ_LOCAL)
-
+        local_start = st
         if local_start.date() != target_date:
             continue
-        if local_start.hour < settings.EXCLUDE_BEFORE:
-            print(f"⏰ Dropped (too early): {title!r} @ {fmt_time(local_start)}")
+        if local_start.hour < settings.EXCLUDE_BEFORE or local_start.hour >= settings.END_HOUR:
             continue
-        if local_start.hour >= settings.END_HOUR:
-            print(f"⏰ Dropped (after end): {title!r} @ {fmt_time(local_start)}")
+        tl = title.lower()
+        status = meta.get('status','').lower()
+        if any(v in tl for v in cancel_variants) or status in cancel_variants:
             continue
-
-        title_lower = title.lower()
-        status = meta.get("status","").lower()
-        if any(v in title_lower for v in cancel_variants) or status in cancel_variants:
-            print(f"❌ Dropped (cancelled): {title!r}")
-            continue
-
         duration = (en - st).total_seconds() / 60
         if duration < 15:
-            print(f"⌛ Dropped (too short {duration:.1f} min): {title!r}")
             continue
-
         kept.append((st, en, title, meta))
-
     return sorted(kept, key=lambda x: x[0])
 
 
 def compute_events_hash(raw_events: list[tuple]) -> str:
-    """
-    Deterministically hash VEVENT components to detect changes.
-    """
     import copy, hashlib
     items = []
     for comp, color, tzf, name in raw_events:
         comp2 = copy.deepcopy(comp)
-        for prop in ("DTSTAMP", "CREATED", "LAST-MODIFIED", "SEQUENCE"):
+        for prop in ('DTSTAMP','CREATED','LAST-MODIFIED','SEQUENCE'):
             comp2.pop(prop, None)
         data = comp2.to_ical()
         items.append((name, data))

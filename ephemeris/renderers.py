@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, tzinfo
 import calendar
 
 from pdfrw import PdfReader
@@ -14,7 +14,7 @@ from reportlab.pdfbase import pdfmetrics
 
 
 import ephemeris.settings as settings
-from ephemeris.layout import get_layout_config, time_to_y
+from ephemeris.layout import get_layout_config, time_to_y, get_page_size
 from ephemeris.event_processing import assign_stacks
 from ephemeris.utils import css_color_to_hex, fmt_time
 
@@ -291,6 +291,7 @@ def render_schedule_pdf(
     output_path: str,
     date_label: datetime.date,
     all_day_events: list | None = None,
+    tz_local: tzinfo          = settings.TZ_LOCAL,
     start_hour: int     = settings.START_HOUR,
     end_hour:   int     = settings.END_HOUR,
     grid_color: str     = settings.GRIDLINE_COLOR,
@@ -307,13 +308,181 @@ def render_schedule_pdf(
       • each timed_event, stacked/ellipsized
       • footer
     """
-    width, height = settings.get_page_size()  # or import get_page_size
+    width, height = get_page_size()  # or import get_page_size
     c = canvas.Canvas(output_path, pagesize=(width, height))
     layout = get_layout_config(width, height, start_hour, end_hour)
     text_padding = layout["text_padding"]
+    DRAW_ALL_DAY = settings.DRAW_ALL_DAY
+    DRAW_MINICALS = settings.DRAW_MINICALS
+    MINICAL_ALIGN = settings.MINICAL_ALIGN
+    page_top = layout["page_top"]
+    page_left = layout["page_left"]
+    page_right = layout["page_right"]
+    heading_ascent = layout["heading_ascent"]
+    heading_size = layout["heading_size"]
+    element_pad = layout["element_pad"]
+    mini_block_gap = layout["mini_block_gap"]
+    grid_left = layout["grid_left"]
+    mini_text_pad = layout["mini_text_pad"]
+    hour_height = layout["hour_height"]
+    MINICAL_ONLY_CURRENT = (settings.minical_mode == "current")
+    MINICAL_HEIGHT = settings.MINICAL_HEIGHT
+    MINICAL_OFFSET = settings.MINICAL_OFFSET
+    ALLDAY_FROM = settings.ALLDAY_FROM
+
+        # Force right alignment of mini-cals if we're drawing the all-day band
+    if DRAW_ALL_DAY:
+        MINICAL_ALIGN = "right"
+
+    # Header/title
+    c.setFillGray(0)
+    title_y = page_top - heading_ascent # Pin ascenders to page_top
+    c.setFont("Montserrat-Bold", heading_size)
+    c.drawCentredString(width/2, title_y, date_label.strftime('%A, %B %d, %Y'))
+
+    # Line under title
+    sep_y = title_y - element_pad
+    c.setStrokeGray(0.4)
+    c.setLineWidth(1)
+    c.line(page_left, sep_y, page_right, sep_y)
+
+    # Mini Calendar Definitions
+    mini_w       = 80
+    mini_h       = MINICAL_HEIGHT
+    gap          = mini_block_gap
+    total_w = mini_w + (0 if MINICAL_ONLY_CURRENT else mini_w + gap)
+
+    if MINICAL_ALIGN == "left":
+        x_start = page_left
+    elif MINICAL_ALIGN == "grid":
+        x_start = grid_left
+    elif MINICAL_ALIGN == "center":
+        x_start = page_left + ((page_right - page_left) - total_w) / 2
+    else:  # right
+        left_offset = MINICAL_OFFSET
+        x_start     = page_right - total_w - left_offset
+    y_cal = sep_y - element_pad - mini_h - (2 * mini_text_pad)
+
+    # All Day Events
+    band_left = page_left if ALLDAY_FROM == "margin" else grid_left
+    if DRAW_MINICALS:
+        band_right  = x_start - mini_block_gap
+    else:
+        band_right = page_right
+    band_width  = band_right - band_left
+    band_bottom = y_cal + element_pad
+    band_top    = y_cal + mini_h + 2*mini_text_pad
+    band_height = band_top - band_bottom
+
+    # Label
+    label_lines = ["All-Day", "Events"]
+    all_day_label_font_size = (band_height * 0.33) / (len(label_lines) * 1.2)
+    x_label = band_left + text_padding
+
+    if DRAW_ALL_DAY:
+        # Draw label string
+        c.setStrokeGray(0.2)
+        draw_centered_multiline(
+            c,
+            label_lines,
+            "Montserrat-SemiBold",
+            all_day_label_font_size,
+            x_label,
+            band_bottom,
+            band_height,
+            line_spacing=1.2
+        )
+
+        # Compute label‐column width
+        c.setFont("Montserrat-SemiBold", all_day_label_font_size)
+        label_w = max(c.stringWidth(line, "Montserrat-SemiBold", all_day_label_font_size)
+                        for line in label_lines)
+        label_area = label_w + 2*text_padding
+
+        n              = len(all_day_events)
+        slots_per_col  = 4
+        slot_h         = band_height / slots_per_col
+        cols           = 1 if n <= slots_per_col else 2
+        capacity       = slots_per_col * cols
+        to_draw        = all_day_events[:capacity]
+        events_left    = band_left + label_area
+        events_width   = band_right - events_left
+        slot_w         = events_width / cols
+        pad            = 2
+        bar_w          = 2
+
+        get_title_font_and_offset, _ = init_text_helpers(hour_height)
+
+        # Draw vertical separator
+        sep_x = events_left
+        # c.setStrokeGray(0.4)
+        c.setStrokeColor(black)
+        c.setLineWidth(0.5)
+        c.line(sep_x, band_bottom, sep_x, band_top)
+
+        # Draw box
+        c.setStrokeColor(black)
+        c.setLineWidth(0.5)
+        c.roundRect(band_left, band_bottom, band_width, band_height, 4, stroke=1, fill=0)
+
+        # Draw the actual all day events, if they exist
+        if all_day_events:
+
+            for idx, (_, _, title, meta) in enumerate(to_draw):
+                col = idx // slots_per_col
+                row = idx %  slots_per_col
+
+                x = events_left + col * slot_w + (2* pad)
+                y = band_top  - (row+1)*slot_h    + pad
+                w = slot_w   - pad*3
+                h = slot_h   - pad*2
+
+                c.setFillColor(HexColor(meta.get("calendar_color", "#DDDDDD")))
+                c.roundRect(x, y, w, h, 4, stroke=0, fill=1)
+                c.setFillColor(css_color_to_hex(event_fill))
+                c.setStrokeColor(css_color_to_hex(event_stroke))
+                c.setLineWidth(0.33)
+                c.roundRect(x + bar_w, y, w - bar_w, h, 4, stroke=1, fill=1)
+
+                pseudo_min = (h / hour_height) * 60
+                fs, baseline = get_title_font_and_offset(pseudo_min)
+                c.setFont("Montserrat-Regular", fs)
+
+                inner_w = (w - bar_w) - 4
+                txt     = title
+                while c.stringWidth(txt + "...", "Montserrat-Regular", fs) > inner_w:
+                    txt = txt[:-1]
+                if txt != title:
+                    txt = txt.rstrip() + "..."
+
+                text_y = y + h - baseline
+                c.setFillGray(0)
+                c.drawString(x + bar_w + 2, text_y, txt)
+
+
+    if DRAW_MINICALS:
+        today = date_label
+        first_of_month = today.replace(day=1)
+        if first_of_month.month == 12:
+            next_month = first_of_month.replace(year=first_of_month.year+1, month=1)
+        else:
+            next_month = first_of_month.replace(month=first_of_month.month+1)
+
+        cal = calendar.Calendar(firstweekday=6)
+        weeks1 = cal.monthdayscalendar(first_of_month.year, first_of_month.month)
+        weeks2 = cal.monthdayscalendar(next_month.year, next_month.month)
+
+        draw_mini_cal(c, first_of_month.year, first_of_month.month,
+                    weeks1, x_start, y_cal, mini_w, mini_h,
+                    highlight_day=today.day)
+        if not MINICAL_ONLY_CURRENT:
+            draw_mini_cal(c, next_month.year, next_month.month,
+                    weeks2, x_start + mini_w + gap, y_cal, mini_w, mini_h)
+
+    # Main Grid
+    render_time_grid(c, date_label, layout)
 
     # Events
-    hour_height = layout["hour_height"]
     get_title_font_and_offset, get_time_font_and_offset = init_text_helpers(hour_height)
     events = assign_stacks(timed_events)
     events = sorted(events,
@@ -321,8 +490,6 @@ def render_schedule_pdf(
     # total_width = (1 * width) - grid_left - grid_right
     total_width = layout["grid_right"] - layout["grid_left"]
     print(f"📏 total_width available: {total_width:.2f} points")
-
-    tz_local  = settings.TIMEZONE
 
     for event in events:
         start = event["start"]
