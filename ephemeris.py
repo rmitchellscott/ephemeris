@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, time, date
 import calendar
 from math import floor
 
-import yaml
+import yaml # type: ignore
 import requests
 import pytz
 import webcolors
@@ -99,7 +99,7 @@ def load_config():
         config = yaml.safe_load(f)
 
     for cal in config.get("calendars", []):
-        raw = cal.get("color", "#CCCCCC")
+        raw = cal.get("color", "black")
         cal["color"] = css_color_to_hex(raw)
 
     return config
@@ -277,7 +277,7 @@ def draw_mini_cal(c, year, month, weeks, x, y, mini_w, mini_h, highlight_day=Non
                 # normal day, centered
                 c.drawCentredString(cx, yy + v_off, str(day))
 def get_page_size():
-    env_size = os.getenv("PDF_PAGE_SIZE", "1872x1404")  # Default to reMarkable 2
+    env_size = os.getenv("PDF_PAGE_SIZE", "1404x1872")  # Default to reMarkable 2
     env_dpi = float(os.getenv("PDF_DPI", "226"))        # Default to reMarkable 2 DPI
     try:
         px_width, px_height = map(int, env_size.lower().split("x"))
@@ -300,7 +300,7 @@ def load_calendars_from_config(config):
 
     for entry in config["calendars"]:
         name   = entry["name"]
-        color  = entry.get("color", "#CCCCCC")
+        color  = entry.get("color", "black")
         source = entry["source"]
 
         if source.startswith("http"):
@@ -781,7 +781,7 @@ def load_raw_events(config):
     names = [e["name"] for e in config["calendars"]]
     print(f"⚙️ Loading {len(names)} calendars: {names!r}")
     for entry in config["calendars"]:
-        name, color, source = entry["name"], entry.get("color","#CCCCCC"), entry["source"]
+        name, color, source = entry["name"], entry.get("color","black"), entry["source"]
 
         # fetch bytes
         if source.startswith("http"):

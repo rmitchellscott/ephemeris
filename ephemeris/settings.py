@@ -1,6 +1,17 @@
 import os
 from dateutil import tz
 from datetime import datetime, date
+from pathlib import Path
+
+# Project root
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# File paths
+CONFIG_PATH  = Path(os.getenv("CONFIG", str(BASE_DIR / "config.yaml")))
+META_FILE    = Path(os.getenv("META_FILE", str(BASE_DIR / "feeds_meta.yaml")))
+OUTPUT_PDF   = os.getenv("OUTPUT_PDF", "output/ephemeris.pdf")
+DEFAULT_COVER = os.getenv("COVER_SVG_PATH", str(BASE_DIR / "assets/cover.pdf"))
+FONTS_DIR = BASE_DIR / "fonts"
 
 # Environment-driven constants
 TIMEZONE     = os.getenv("TIMEZONE", "UTC")
@@ -20,11 +31,26 @@ EVENT_STROKE    = os.getenv("EVENT_STROKE", "gray(20%)")
 GRIDLINE_COLOR  = os.getenv("GRIDLINE_COLOR", "gray(20%)")
 FOOTER_COLOR    = os.getenv("FOOTER_COLOR", "gray(60%)")
 
-# File paths
-CONFIG_PATH      = os.getenv("CONFIG", "config.yaml")
-OUTPUT_PDF       = os.getenv("OUTPUT_PDF", "output/ephemeris.pdf")
-META_FILE        = os.getenv("META_FILE", "feeds_meta.yaml")
-FONTS_DIR        = os.path.join(os.path.dirname(__file__), "fonts")
+# Page layout
+PDF_MARGIN_LEFT   = float(os.getenv("PDF_MARGIN_LEFT", 6))
+PDF_MARGIN_RIGHT  = float(os.getenv("PDF_MARGIN_RIGHT", 6))
+PDF_MARGIN_TOP    = float(os.getenv("PDF_MARGIN_TOP", 9))
+PDF_MARGIN_BOTTOM = float(os.getenv("PDF_MARGIN_BOTTOM", 6))
+MINICAL_HEIGHT   = float(os.getenv("MINICAL_HEIGHT", 60))
+MINICAL_GAP = float(os.getenv("MINICAL_GAP", 10))
+MINICAL_TEXT_PADDING= float(os.getenv("MINICAL_TEXT_PADDING", 5))
+PDF_GRID_BOTTOM_BUFFER = float(os.getenv("PDF_GRID_BOTTOM_BUFFER", 9))
+DRAW_ALL_DAY  = os.getenv("DRAW_ALL_DAY",  "true").lower() in ("1","true","yes")
+PDF_PAGE_SIZE= os.getenv("PDF_PAGE_SIZE", "1872x1404")  # Default to reMarkable 2
+PDF_DPI = float(os.getenv("PDF_DPI", "226")) 
+FOOTER = os.getenv("FOOTER", "E P H E M E R I S")
+
+# Behavior
+FORCE_REFRESH = os.getenv("FORCE_REFRESH", "false").lower() in ("1", "true", "yes")
+
+# Cover
+COVER_WIDTH_FRAC = float(os.getenv("COVER_WIDTH_FRAC", 0.75))
+COVER_VERT_FRAC = float(os.getenv("COVER_VERT_FRAC", 0.25))
 
 # Date helpers
 def today_date():
