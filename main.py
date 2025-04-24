@@ -4,6 +4,7 @@ from datetime import datetime
 from collections import Counter, defaultdict
 
 from PyPDF2 import PdfMerger
+from loguru import logger
 
 import ephemeris.settings as settings
 from ephemeris.fonts import init_fonts
@@ -19,16 +20,18 @@ from ephemeris.event_processing import (
 from ephemeris.layout import get_page_size
 from ephemeris.utils import parse_date_range
 from ephemeris.renderers import render_cover, render_schedule_pdf
+from ephemeris.logger import configure_logging
 
 
 def main():
+    # 0) Set up logs
+    configure_logging()
     # 1) Initialize fonts once
     init_fonts()
 
     # 2) Determine local timezone
     tz_local = settings.TZ_LOCAL
-    print(f"TZ_LOCAL = {tz_local!r}   type={type(tz_local)}")
-    print(f"Timezone: {settings.TIMEZONE}")
+    logger.debug("Timezone: {}", settings.TIMEZONE)
 
     # 3) Build list of dates to render
     dr = os.getenv("DATE_RANGE")
@@ -55,15 +58,19 @@ def main():
     prev_hash   = meta.get("events_hash")
 
     if not settings.FORCE_REFRESH and last_anchor == anchor and prev_hash == new_hash:
-        print(f"🚫 No changes for {anchor}, skipping generation.")
+        logger.info("No changes for {}, skipping generation.", anchor)
+        # print(f"🚫 No changes for {anchor}, skipping generation.")
         sys.exit(0)
 
     if settings.FORCE_REFRESH:
-        print("🔄 FORCE_REFRESH set → full refresh.")
+        # print("🔄 FORCE_REFRESH set → full refresh.")
+        logger.info("FORCE_REFRESH set, refreshing...")
     elif last_anchor != anchor:
-        print(f"🔄 Date-range changed: {last_anchor} → {anchor}")
+        # print(f"🔄 Date-range changed: {last_anchor} → {anchor}")
+        logger.info("Date-range changed: {} → {}, refreshing...", last_anchor, anchor)
     else:
-        print(f"✅ Events changed: {prev_hash[:8]} → {new_hash[:8]}")
+        # print(f"✅ Events changed: {prev_hash[:8]} → {new_hash[:8]}")
+        logger.info("Events changed, refreshing...")
 
     # 7) Build override map
     from ephemeris.event_processing import build_override_map
@@ -71,6 +78,7 @@ def main():
 
     # 8) Optionally render cover
     if settings.COVER_PAGE:
+        logger.debug("Rendering cover page")
         w, h = get_page_size()
         cover_src = os.getenv("COVER_SVG_PATH", settings.DEFAULT_COVER)
         render_cover(merger, temp_files, cover_src, w, h)
@@ -104,11 +112,13 @@ def main():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "wb") as f:
         merger.write(f)
-    print(f"📄 Wrote {out_path}")
+    # print(f"📄 Wrote {out_path}")
+    logger.info("Wrote file to {}", out_path)
 
     # 11) Persist metadata
     save_meta({"_last_anchor": anchor, "events_hash": new_hash})
-    print(f"✅ Completed generation for {anchor}")
+    # print(f"✅ Completed generation for {anchor}")
+    logger.info("✅ Completed generation for {}", anchor)
 
     # 12) Clean up
     for fpath in temp_files:

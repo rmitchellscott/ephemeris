@@ -6,3 +6,4 @@ icalendar
 webcolors
 PyPDF2
 pdfrw
+loguru
