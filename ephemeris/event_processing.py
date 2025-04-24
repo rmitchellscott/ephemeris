@@ -2,6 +2,7 @@ from datetime import datetime, date, time, timedelta
 from collections import defaultdict, deque
 import pytz
 from dateutil.rrule import rrulestr
+from loguru import logger
 
 import ephemeris.settings as settings
 from ephemeris.utils import fmt_time
@@ -39,6 +40,7 @@ def assign_stacks(events: list[tuple]) -> list[dict]:
 
     result = []
     for cluster in clusters:
+        logger.log("VISUAL", "----------------------------------------------------------------------")
         cluster_events = [(i, events[i]) for i in cluster]
         # Sort by duration descending, start ascending
         sorted_events = sorted(
@@ -60,12 +62,14 @@ def assign_stacks(events: list[tuple]) -> list[dict]:
                 assignments[idx] = len(layers) - 1
 
         max_depth = len(layers)
-        if settings.DEBUG_LAYERS:
-            print("🔍 Debug: event layers:")
-            for idx, (start, end, title, _) in cluster_events:
-                li = assignments[idx]
-                ts = lambda dt: dt.astimezone(settings.TZ_LOCAL).strftime("%H:%M")
-                print(f"  • Layer {li}: {title} [{ts(start)}→{ts(end)}]")
+
+        logger.log("VISUAL", "Event layers for this cluster of events:")
+        for idx, (start, end, title, meta) in cluster_events:
+            li = assignments[idx]
+            # ts = lambda dt: dt.astimezone(tz_local).strftime("%H:%M")
+            ts = lambda dt: dt.astimezone(settings.TZ_LOCAL).strftime("%H:%M")
+            clean_title = str(title)
+            logger.log("VISUAL","   • Layer {} {} [{} → {}]", li, clean_title, ts(start), ts(end))
 
         for idx, (start, end, title, meta) in cluster_events:
             li = assignments[idx]
@@ -78,7 +82,7 @@ def assign_stacks(events: list[tuple]) -> list[dict]:
                 'layer_index': li,
                 'width_frac': wf
             })
-
+        # logger.log("VISUAL", "----------------------------------------------------------------------")
     return result
 
 
@@ -178,7 +182,12 @@ def expand_event_for_day(
                         dt0 = dt0.replace(tzinfo=tz_local)
                     exdates.add(dt0)
         for occ in rule.between(sod, sod_next, inc=True):
-            if occ in override_map.get(uid, set()) or occ in exdates:
+            # if occ in override_map.get(uid, set()) or occ in exdates:  {}:{}.",title, local_start.hour, local_start.minute)
+            if occ in override_map.get(uid, set()):
+                logger.opt(colors=True).log("EVENTS","<yellow>Skipping occurrence (override exists):</yellow> '{}' at {:02d}:{:02d}.", comp.get('SUMMARY','Untitled'), occ.hour, occ.minute)
+                continue
+            if  occ in exdates:
+                logger.opt(colors=True).log("EVENTS","<yellow>Skipping occurrence (excluded for this day):</yellow> '{}' at {:02d}:{:02d}.", comp.get('SUMMARY','Untitled'), occ.hour, occ.minute)
                 continue
             st = occ.astimezone(tz_local)
             en = (occ + (end - start)).astimezone(tz_local)
@@ -213,18 +222,23 @@ def filter_events_for_day(events: list[tuple], target_date: date) -> list[tuple]
         local_start = st
         if local_start.date() != target_date:
             continue
-        if local_start.hour < settings.EXCLUDE_BEFORE or local_start.hour >= settings.END_HOUR:
+        if local_start.hour < settings.EXCLUDE_BEFORE:
+            logger.opt(colors=True).log("EVENTS","<yellow>Dropped (too early):</yellow> '{}' at {}:{}.",title, local_start.hour, local_start.minute)
+            continue
+        if local_start.hour >= settings.END_HOUR:
+            logger.opt(colors=True).log("EVENTS","<yellow>Dropped (too late):</yellow> '{}' at {}:{}.",title, local_start.hour, local_start.minute)
             continue
         tl = title.lower()
         status = meta.get('status','').lower()
         if any(v in tl for v in cancel_variants) or status in cancel_variants:
+            logger.opt(colors=True).log("EVENTS","<yellow>Dropped (cancelled):</yellow> '{}'.",title)
             continue
         duration = (en - st).total_seconds() / 60
         if duration < 15:
+            logger.opt(colors=True).log("EVENTS","<yellow>Dropped (too short):</yellow> '{}', {}min.",title, duration)
             continue
         kept.append((st, en, title, meta))
     return sorted(kept, key=lambda x: x[0])
-
 
 def compute_events_hash(raw_events: list[tuple]) -> str:
     import copy, hashlib

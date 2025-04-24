@@ -1,13 +1,11 @@
-# Standard
-import os
 import re
 from datetime import datetime, timedelta, date
 import calendar
-
+from loguru import logger
 import webcolors
 from dateutil import tz
 
-USE_24H = os.getenv("TIME_FORMAT", "24") == "24"
+from ephemeris.settings import USE_24H
 
 # Local: none
 
@@ -46,7 +44,7 @@ def css_color_to_hex(name_or_hex: str) -> str:
     try:
         return webcolors.name_to_hex(name_or_hex)
     except ValueError:
-        print(f"⚠️ Unknown CSS color '{name_or_hex}', passing through")
+        logger.error("Unknown CSS color '{}', passing through.", name_or_hex)
         return name_or_hex
 
 

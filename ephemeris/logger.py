@@ -8,7 +8,7 @@ def configure_logging(
     colorize: bool = True,
     format=(
         "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-        "<level>{level.icon} {level: <7}</level> | "
+        "<level>{level: <7}</level> | "
         "{message}"
     ),
 ):
@@ -18,13 +18,13 @@ def configure_logging(
     - colorize: whether to use ANSI colors in the console.
     - format: Loguru format string for console output.
     """
-    env_level = os.getenv("LOG_LEVEL")
+    env_level = os.getenv("LOG_LEVEL", "").upper()
     effective_level = env_level if env_level else (level or "DEBUG")
     logger.remove()
 
     # Custom levels
     logger.level("VISUAL", no=8, icon="🔍", color="<magenta>")
-    logger.level("EVENT",  no=9,  icon="📅", color="<blue>")
+    logger.level("EVENTS",  no=9,  icon="📅", color="<magenta>")
 
     logger.add(
         sys.stdout,

@@ -1,10 +1,10 @@
-import os
 from datetime import datetime, date, time
 from tempfile import NamedTemporaryFile
 
 import requests
 from icalendar import Calendar as iCal
 from dateutil import tz as dateutil_tz
+from loguru import logger
 
 import ephemeris.settings as settings
 
@@ -82,13 +82,17 @@ def load_raw_events(sources: list[dict]) -> list[tuple]:
     and extract VEVENTs with VTIMEZONE support.
     """
     all_events = []
+    names = [entry.get("name", "<unknown>") for entry in sources]
+    logger.debug("Loading {} calendars: {}", len(names), names)
     for entry in sources:
         name = entry.get("name")
-        color = entry.get("color", "#CCCCCC")
+        color = entry.get("color", "black")
         source = entry.get("source")
+        logger.debug("Fetching calender {} from {}...", name, source)
         raw = download_calendar(source)
         cal = parse_calendar(raw)
         all_events.extend(extract_raw_events(cal, color, name))
+
 
     # Sort by dtstart, normalized to timezone-aware datetimes
     return sorted(

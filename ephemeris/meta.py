@@ -1,4 +1,6 @@
 import yaml
+from loguru import logger
+
 import ephemeris.settings as settings
 
 META_FILE = settings.META_FILE

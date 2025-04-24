@@ -5,6 +5,7 @@ from collections import defaultdict
 from reportlab.lib.pagesizes import letter
 
 import ephemeris.settings as settings
+from ephemeris.logger import logger
 
 def get_layout_config(width, height, start_hour=6, end_hour=17):
     # Raw page margins from environment
@@ -101,5 +102,6 @@ def get_page_size():
         height_pt = pixels_to_points(px_height, dpi=env_dpi)
         return width_pt, height_pt
     except Exception as e:
-        print(f"⚠️ Invalid PDF_PAGE_SIZE or PDF_DPI: {e}. Using fallback letter size.")
+        msg = f"⚠️ Invalid PDF_PAGE_SIZE or PDF_DPI: {e}. Using letter as the fallback size."
+        logger.error("{}",msg)
         return letter

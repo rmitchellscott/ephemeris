@@ -2,6 +2,7 @@ import os
 from dateutil import tz
 from datetime import datetime, date
 from pathlib import Path
+from loguru import logger
 
 # Project root
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -14,8 +15,9 @@ DEFAULT_COVER = os.getenv("COVER_SVG_PATH", str(BASE_DIR / "assets/cover.pdf"))
 FONTS_DIR = BASE_DIR / "fonts"
 
 TIMEZONE = os.getenv("TIMEZONE", "UTC")
+DATE_RANGE = os.getenv("DATE_RANGE")
+TARGET_DATE = os.getenv("TARGET_DATE")
 
-# The real tzinfo instance, for all datetime ops
 TZ_LOCAL = tz.gettz(TIMEZONE) or tz.tzutc()
 EXCLUDE_BEFORE = int(os.getenv("EXCLUDE_BEFORE", "0"))
 START_HOUR     = int(os.getenv("START_HOUR", "6"))

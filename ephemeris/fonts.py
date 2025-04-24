@@ -1,6 +1,8 @@
 from pathlib import Path
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from loguru import logger
+
 from ephemeris.settings import FONTS_DIR
 
 def init_fonts(fonts_dir: Path | None = None) -> None:
@@ -27,9 +29,13 @@ def init_fonts(fonts_dir: Path | None = None) -> None:
         for base in candidates:
             font_path = (base / fname).resolve()
             if font_path.is_file():
+                logger.debug("Loading font {} from {}",name, str(font_path))
                 pdfmetrics.registerFont(TTFont(name, str(font_path)))
                 break
         else:
-            raise FileNotFoundError(
-                f"Font '{fname}' not found in: {', '.join(str(p) for p in candidates)}"
+            msg = (
+                f"Font '{fname}' not found in: "
+                f"{', '.join(str(p) for p in candidates)}"
             )
+            logger.error("{}", msg)
+            raise FileNotFoundError(msg)

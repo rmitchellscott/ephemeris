@@ -1,10 +1,10 @@
 from datetime import datetime, time, tzinfo
 import calendar
-
 from pdfrw import PdfReader
 from pdfrw.buildxobj import pagexobj
 from pdfrw.toreportlab import makerl
 from tempfile import NamedTemporaryFile
+from loguru import logger
 
 
 from reportlab.pdfgen import canvas
@@ -75,7 +75,8 @@ def draw_mini_cal(c, year, month, weeks, x, y, mini_w, mini_h, highlight_day=Non
     c.setFont("Montserrat-Regular", 6)
     month_name = calendar.month_name[month]
     c.drawCentredString(x + mini_w/2, y + mini_h + 4, f"{month_name} {year}")
-
+    logger.log("VISUAL","Drawing mini-calendar for {}.", month_name)
+    logger.log("VISUAL","    Height: {h:.2f}, Width: {w:.2f}",h=mini_h,w=mini_w)
     # Weekday headers
     days   = ['S','M','T','W','T','F','S']
     cell_w = mini_w / 7
@@ -210,7 +211,10 @@ def render_time_grid(c, date_label, layout):
         layout["grid_left"] +0.25,
         layout["grid_top"] + 0.25
     )
-
+    logger.log("VISUAL","Drawing time grid between {} - {}.", layout["start_hour"], layout["end_hour"])
+    logger.log("VISUAL","    Top: {t:.2f}, Bottom: {b:.2f}",t=layout["grid_top"],b=layout["grid_bottom"])
+    logger.log("VISUAL","    Left: {l:.2f}, Right: {l:.2f}",l=layout["grid_left"] ,r=layout["grid_right"])
+    
     # Draw the grid heading
     c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
     c.setFont("Montserrat-SemiBold", 10)
@@ -308,7 +312,7 @@ def render_schedule_pdf(
       • each timed_event, stacked/ellipsized
       • footer
     """
-    width, height = get_page_size()  # or import get_page_size
+    width, height = get_page_size()
     c = canvas.Canvas(output_path, pagesize=(width, height))
     layout = get_layout_config(width, height, start_hour, end_hour)
     text_padding = layout["text_padding"]
@@ -330,7 +334,18 @@ def render_schedule_pdf(
     MINICAL_OFFSET = settings.MINICAL_OFFSET
     ALLDAY_FROM = settings.ALLDAY_FROM
 
-        # Force right alignment of mini-cals if we're drawing the all-day band
+    logger.log("VISUAL","Page size:")
+    logger.log("VISUAL","   pixels: {}", settings.PDF_PAGE_SIZE)
+    logger.log("VISUAL", "Page size: {w:.2f}×{h:.2f}", w=width, h=height)
+    logger.log("VISUAL","DPI: {}", settings.PDF_DPI)
+    logger.log("VISUAL","Page Margins:")
+    logger.log("VISUAL","      Top: {}", settings.PDF_MARGIN_TOP)
+    logger.log("VISUAL","   Bottom: {}", settings.PDF_MARGIN_BOTTOM)
+    logger.log("VISUAL","    Right: {}", settings.PDF_MARGIN_RIGHT)
+    logger.log("VISUAL","     Left: {}", settings.PDF_MARGIN_LEFT)
+
+
+    # Force right alignment of mini-cals if we're drawing the all-day band
     if DRAW_ALL_DAY:
         MINICAL_ALIGN = "right"
 
@@ -494,11 +509,13 @@ def render_schedule_pdf(
     # Events
     get_title_font_and_offset, get_time_font_and_offset = init_text_helpers(hour_height)
     events = assign_stacks(timed_events)
+    if events:
+        logger.log("VISUAL", "----------------------------------------------------------------------")
     events = sorted(events,
                     key=lambda e: (e["layer_index"], e["start"]))
     # total_width = (1 * width) - grid_left - grid_right
     total_width = layout["grid_right"] - layout["grid_left"]
-    print(f"📏 total_width available: {total_width:.2f} points")
+    logger.log("VISUAL","Total width available: {w:.2f} points", w=total_width)
 
     for event in events:
         start = event["start"]
@@ -540,7 +557,8 @@ def render_schedule_pdf(
         clamped_y_end   = max(y_end,   layout["grid_bottom"])
         clamped_h       = clamped_y_start - clamped_y_end
 
-        # print(f"📦 Event: '{title}' | box_x: {box_x:.2f} | box_width: {box_width:.2f} | box_height: {box_height:.2f}")
+        
+        # logger.log("VISUAL","Total width available: {w:.2f} points", w=total_width)
 
         hex_color = meta.get("calendar_color", "#DDDDDD")
         radius = 3 if box_height < 6 else 4
@@ -559,6 +577,9 @@ def render_schedule_pdf(
         #     continue
         c.setFillGray(0)
         duration_minutes = (end_eff - start_eff).total_seconds() / 60
+
+        logger.log("VISUAL","Event: '{}' ({} min)", title, int(duration_minutes))
+        logger.log("VISUAL","        Size: box_x: {x:.2f} | box_width: {w:.2f} | box_height: {h:.2f}", title, x=box_x, w=box_width, h=box_height)
 
         font_size, y_offset = get_title_font_and_offset(duration_minutes)
         c.setFont("Montserrat-Regular", font_size)
@@ -666,24 +687,18 @@ def render_schedule_pdf(
                 move_time = False
                 hide_time = True
         if hide_time:
-            print(
-                f"ℹ️ HIDING time for '{title}' ({int(duration_minutes)} min) "
-                f"because above '{above_event['title']}' @ {above_event['start'].strftime('%H:%M')}"
-            )
-            # no time drawn
+            logger.opt(colors=True).log("VISUAL","        <yellow>Hiding time because overlapping event {} @ {}.</yellow>", above_event["title"],above_event['start'].strftime('%H:%M') )
         elif move_time:
-            print(
-                f"ℹ️ MOVING time for '{title}' ({int(duration_minutes)} min) "
-                f"due to {'title too long' if should_move_for_title else 'above-event'}"
-            )
+            if should_move_for_title:
+                logger.opt(colors=True).log("VISUAL","        <cyan>Moving time because the title is too long.</cyan>")
+            else:
+                logger.opt(colors=True).log("VISUAL","        <cyan>Moving time because overlapping event {} @ {}.</cyan>", above_event["title"],above_event['start'].strftime('%H:%M') )
             y_title = y_start - title_y_offset
             y_time  = y_title - (text_padding / 2) - time_y_offset
             x_time  = box_x + 2 + text_padding
             c.drawString(x_time, y_time, time_label)
         else:
-            print(
-                f"ℹ️ DRAWING inline time for '{title}' ({int(duration_minutes)} min); no close-above event"
-            )
+            logger.log("VISUAL","        Drawing inline time; no overlapping event detected.", title, int(duration_minutes))
             y_time = y_start - y_offset
             c.drawRightString(box_x + box_width - text_padding, y_time, time_label)
 
