@@ -145,14 +145,23 @@ def expand_event_for_day(
     start = normalize(start_raw, 'dtstart')
     end   = normalize(end_raw, 'dtend')
 
-    # All-day: flagged or spans midnight
-    sod = datetime.combine(target_date, time.min).replace(tzinfo=tz_local)
+    sod      = datetime.combine(target_date, time.min).replace(tzinfo=tz_local)
     sod_next = sod + timedelta(days=1)
-    is_flagged = comp.get('DTSTART').params.get('VALUE') == 'DATE'
-    if is_flagged or (start <= sod and end >= sod_next):
-        meta = {'uid': uid, 'calendar_color': color, 'all_day': True}
-        return [(sod, sod_next, str(comp.get('SUMMARY','')), meta)]
 
+    #    Only catch VEVENTs whose raw DTSTART was a date (no time component).
+    if isinstance(start_raw, date) and not isinstance(start_raw, datetime):
+        # `dtend` for a DATE-valued VEVENT is also a date, and is the day AFTER
+        # the last all-day instance.  Only expand if our target_date is in [start_raw, dtend).
+        dtend_date = comp.decoded('dtend')
+        if isinstance(dtend_date, date):
+            if start_raw <= target_date < dtend_date:
+                # st = datetime.combine(target_date, time.min).replace(tzinfo=tz_local)
+                # en = datetime.combine(target_date + timedelta(days=1), time.min).replace(tzinfo=tz_local)
+                st = sod
+                en = sod_next
+                meta = {'uid': uid, 'calendar_color': color, 'all_day': True}
+                return [(st, en, str(comp.get('SUMMARY','')), meta)]
+        return []
     # Recurring
     raw_rr = comp.get('RRULE')
     if raw_rr:

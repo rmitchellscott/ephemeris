@@ -444,8 +444,17 @@ def render_schedule_pdf(
                 c.setLineWidth(0.33)
                 c.roundRect(x + bar_w, y, w - bar_w, h, 4, stroke=1, fill=1)
 
-                pseudo_min = (h / hour_height) * 60
-                fs, baseline = get_title_font_and_offset(pseudo_min)
+                # size the font as a fixed fraction of the box height
+                # e.g. use 40% of the box height
+                fraction = 0.6
+                fs = h * fraction
+                # enforce reasonable min/max so text never disappears or overflows
+                fs = max(6, min(fs, h * 0.8))
+                # now compute vertical centering baseline
+                face    = pdfmetrics.getFont("Montserrat-Regular").face
+                ascent  = face.ascent  / 1000 * fs
+                descent = face.descent / 1000 * fs
+                baseline = (h + ascent + descent) / 2.0
                 c.setFont("Montserrat-Regular", fs)
 
                 inner_w = (w - bar_w) - 4
