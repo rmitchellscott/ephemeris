@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH  = Path(os.getenv("CONFIG", str(BASE_DIR / "config.yaml")))
 META_FILE    = Path(os.getenv("META_FILE", str(BASE_DIR / "feeds_meta.yaml")))
 OUTPUT_PDF   = os.getenv("OUTPUT_PDF", "output/ephemeris.pdf")
-DEFAULT_COVER = os.getenv("COVER_SVG_PATH", str(BASE_DIR / "assets/cover.pdf"))
+DEFAULT_COVER = os.getenv("COVER_SVG_PATH", str(BASE_DIR / "assets/cover.svg"))
 FONTS_DIR = BASE_DIR / "fonts"
 
 TIMEZONE = os.getenv("TIMEZONE", "UTC")

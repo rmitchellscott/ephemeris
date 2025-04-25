@@ -87,7 +87,7 @@ def main():
     if settings.COVER_PAGE:
         logger.debug("Rendering cover page")
         w, h = get_page_size()
-        cover_src = os.getenv("COVER_SVG_PATH", settings.DEFAULT_COVER)
+        cover_src = settings.DEFAULT_COVER
         render_cover(merger, temp_files, cover_src, w, h)
 
     # 9) Per-day expansion & rendering

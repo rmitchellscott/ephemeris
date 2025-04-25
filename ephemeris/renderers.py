@@ -1,3 +1,4 @@
+from io import BytesIO
 from datetime import datetime, time, tzinfo
 import calendar
 from pdfrw import PdfReader
@@ -11,6 +12,10 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor, black, white
 from reportlab.pdfbase import pdfmetrics
+from reportlab.lib.utils import ImageReader
+from PyPDF2 import PdfMerger
+import cairosvg
+
 
 
 import ephemeris.settings as settings
@@ -241,7 +246,67 @@ def render_time_grid(c, date_label, layout):
             label
         )
 
-def render_cover(merger, temp_files, cover_src, page_w_pt, page_h_pt,
+def render_cover(
+     merger: PdfMerger,
+     temp_files: list,
+     cover_src: str,
+     page_w_pt: float,
+     page_h_pt: float,
+ ):
+     """
+     Rasterize svg_path → PNG, draw it full-width (or COVER_WIDTH_PT)
+     on a single-page PDF, centered, then append to merger.
+     """
+     dpi = settings.PDF_DPI
+     # 1) Desired image width in points (defaults to full page width)
+     target_w_frac = settings.COVER_WIDTH_FRAC
+     # 2) Vertical nudge
+     v_frac      = settings.COVER_VERT_FRAC
+ 
+     target_w_pt = page_w_pt *target_w_frac
+     target_w_px = int(target_w_pt * (dpi/ 72.0))
+ 
+     # 4) Rasterize SVG → PNG bytes
+     png_bytes = cairosvg.svg2png(
+         url=cover_src,
+         output_width=target_w_px
+     )
+ 
+     # 5) Wrap in ImageReader
+     buf = BytesIO(png_bytes)
+     img = ImageReader(buf)
+     px_w, px_h = img.getSize()
+ 
+     # 6) Compute height in points to preserve aspect ratio
+     img_w_pt = target_w_pt
+     img_h_pt = px_h * (72.0 / dpi)
+ 
+     # 7) Position centrally
+     x = (page_w_pt - img_w_pt) / 2.0
+     # y = (page_h_pt - img_h_pt) / 2.0
+     y = (page_h_pt - img_h_pt) * (1 - v_frac)
+
+     tf = NamedTemporaryFile(suffix=".pdf", delete=False)
+     cover_path = tf.name
+     tf.close()
+ 
+     # 8) Create one-page PDF & draw
+     c = canvas.Canvas(cover_path, pagesize=(page_w_pt, page_h_pt))
+     c.drawImage(
+         img, x, y,
+         width=img_w_pt,
+         height=img_h_pt,
+         mask="auto",
+         preserveAspectRatio=True
+     )
+     c.showPage()
+     c.save()
+ 
+     # 9) Append & register for cleanup
+     merger.append(cover_path)
+     temp_files.append(cover_path)
+
+def render_cover_pdf(merger, temp_files, cover_src, page_w_pt, page_h_pt,
                  width_frac: float = settings.COVER_WIDTH_FRAC,
                  vert_frac:  float = settings.COVER_VERT_FRAC):
         """
