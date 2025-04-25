@@ -171,8 +171,9 @@ DOC_PAGE_DPI=125
 |:--------------------|:--------------------------|:----------------------|:--------------------------------------------------------------------|
 | APP_CONFIG_PATH     | {BASE_DIR}/config.yaml   | /path/to/config.yaml   | Path to the configuration file.                                     |
 | APP_META_FILE_PATH  | {BASE_DIR}/feeds_meta.yaml| /path/to/meta.yaml    | Path to the feeds metadata file.                                    |
-| APP_OUTPUT_PATH     | output/ephemeris.pdf     | reports/schedule.pdf   | Path and name for rendered output file.                             |
-| APP_OUTPUT_FORMAT   | pdf                      | pdf                    | Output format for the generated schedule.                           |
+| APP_OUTPUT_FORMAT   | pdf                      | pdf, png, both         | Output format for the generated schedule.                           |
+| APP_OUTPUT_PDF_PATH | output/ephemeris.pdf     | reports/schedule.pdf   | Path and name for rendered output file.                             |
+| APP_OUTPUT_PNG_DIR  | output/png               | reports/images         | Directory for rendered output PNG files, one per day.               |
 | APP_FORCE_REFRESH   | false                    | true, false            | Skip the changed events check and always render a document for each run. |
 | APP_LOG_LEVEL       | INFO                     | VISUAL, EVENTS, DEBUG, INFO, WARNING   | Minimum log level to output to console. EVENTS is useful for troubleshooting why events are appearing or not. VISUAL shows detailed drawing information for developer debugging.                         |
 | APP_LOG_COLORIZE    | true                     | true, false            | Whether to use ANSI colors in console log output.                   |

@@ -1,9 +1,12 @@
 from io import BytesIO
+import os
 from datetime import datetime, time, tzinfo
 import calendar
 from tempfile import NamedTemporaryFile
 from loguru import logger
-
+import cairosvg
+import subprocess
+from pathlib import Path
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
@@ -11,7 +14,7 @@ from reportlab.lib.colors import HexColor, black, white
 from reportlab.pdfbase import pdfmetrics
 from reportlab.lib.utils import ImageReader
 from PyPDF2 import PdfMerger
-import cairosvg
+
 
 
 
@@ -280,7 +283,6 @@ def render_cover(
  
      # 7) Position centrally
      x = (page_w_pt - img_w_pt) / 2.0
-     # y = (page_h_pt - img_h_pt) / 2.0
      y = (page_h_pt - img_h_pt) * (1 - v_frac)
 
      tf = NamedTemporaryFile(suffix=".pdf", delete=False)
@@ -465,7 +467,7 @@ def render_schedule_pdf(
                 w = slot_w   - pad*3
                 h = slot_h   - pad*2
 
-                c.setFillColor(HexColor(meta.get("calendar_color", "#DDDDDD")))
+                c.setFillColor(HexColor(meta.get("calendar_color", "#FFFFFF")))
                 c.roundRect(x, y, w, h, 4, stroke=0, fill=1)
                 c.setFillColor(css_color_to_hex(event_fill))
                 c.setStrokeColor(css_color_to_hex(event_stroke))
@@ -526,7 +528,6 @@ def render_schedule_pdf(
         logger.log("VISUAL", "----------------------------------------------------------------------")
     events = sorted(events,
                     key=lambda e: (e["layer_index"], e["start"]))
-    # total_width = (1 * width) - grid_left - grid_right
     total_width = layout["grid_right"] - layout["grid_left"]
     logger.log("VISUAL","Total width available: {w:.2f} points", w=total_width)
 
@@ -571,9 +572,7 @@ def render_schedule_pdf(
         clamped_h       = clamped_y_start - clamped_y_end
 
         
-        # logger.log("VISUAL","Total width available: {w:.2f} points", w=total_width)
-
-        hex_color = meta.get("calendar_color", "#DDDDDD")
+        hex_color = meta.get("calendar_color", "#FFFFFF")
         radius = 3 if box_height < 6 else 4
         color_bar_width = 2
 
@@ -586,8 +585,6 @@ def render_schedule_pdf(
         c.setFillColor(css_color_to_hex(event_fill))
         draw_rect_with_optional_round(c, box_x+ color_bar_width, clamped_y_end, box_width - color_bar_width, clamped_h, radius, round_top = not breached_top,round_bottom= not breached_bottom,stroke=1,fill=1)
 
-        # if start.hour < START_HOUR or start.hour >= END_HOUR:
-        #     continue
         c.setFillGray(0)
         duration_minutes = (end_eff - start_eff).total_seconds() / 60
 
@@ -736,3 +733,42 @@ def render_schedule_pdf(
     # c.line(page_right, page_bottom, page_left, page_bottom)
 
     c.save()
+    
+def export_pdf_to_png(pdf_path: str,
+                      date_list: list,
+                      cover: bool,
+                      output_dir: str = None,
+                      dpi: int = 150):
+    """
+    Calls Poppler's pdftocairo to rasterize each page of `pdf_path` to PNG.
+    Output files:
+      - cover.png       (if cover=True)
+      - schedule_YYYY-MM-DD.png
+    """
+    # prepare output directory
+    base = Path(pdf_path).with_suffix('')
+    out_dir = Path(output_dir or f"{base}_png")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Rendering PNGs...")
+
+    # prefix for pdftocairo (it will append -1.png, -2.png, etc)
+    prefix = str(out_dir / "page")
+    subprocess.run([
+        "pdftocairo",
+        "-png",
+        "-r", str(dpi),
+        str(pdf_path),
+        prefix
+    ], check=True)
+
+    # rename page-N.png → cover.png / ephemeris_YYYY-MM-DD.png
+    for file in sorted(out_dir.glob("page-*.png")):
+        idx = int(file.stem.split('-')[1])  # 1-based page number
+        if cover and idx == 1:
+            new_name = out_dir / "cover.png"
+        else:
+            date = date_list[idx - (1 if cover else 0) - 1]
+            new_name = out_dir / f"ephemeris_{date.isoformat()}.png"
+        file.rename(new_name)
+
+    return str(out_dir)
