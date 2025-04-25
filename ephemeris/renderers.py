@@ -1,9 +1,6 @@
 from io import BytesIO
 from datetime import datetime, time, tzinfo
 import calendar
-from pdfrw import PdfReader
-from pdfrw.buildxobj import pagexobj
-from pdfrw.toreportlab import makerl
 from tempfile import NamedTemporaryFile
 from loguru import logger
 
@@ -305,55 +302,6 @@ def render_cover(
      # 9) Append & register for cleanup
      merger.append(cover_path)
      temp_files.append(cover_path)
-
-def render_cover_pdf(merger, temp_files, cover_src, page_w_pt, page_h_pt,
-                 width_frac: float = settings.COVER_WIDTH_FRAC,
-                 vert_frac:  float = settings.COVER_VERT_FRAC):
-        """
-        Embed cover_src_pdf (an existing single-page PDF) as a fully-vector Form XObject,
-        scaled to COVER_WIDTH_FRAC of page width and vertically offset by COVER_VERT_FRAC,
-        then append to the merger.
-        """
-
-        # 1) Compute target width in points
-        target_w_pt = page_w_pt * width_frac
-
-        # 2) Read & wrap first page of provided PDF as XObject
-        reader     = PdfReader(cover_src)
-        page_xobj  = pagexobj(reader.pages[0])
-
-        # 3) Create a new canvas for the cover page
-        tf = NamedTemporaryFile(suffix=".pdf", delete=False)
-        cover_path = tf.name
-        tf.close()
-
-        c = canvas.Canvas(cover_path, pagesize=(page_w_pt, page_h_pt))
-        form = makerl(c._doc, page_xobj)
-
-        # 4) Compute original PDF dims in points
-        orig_w_pt = page_xobj.BBox[2] - page_xobj.BBox[0]
-        orig_h_pt = page_xobj.BBox[3] - page_xobj.BBox[1]
-        # scale to target width
-        scale     = target_w_pt / orig_w_pt
-        scaled_h  = orig_h_pt * scale
-
-        # 5) Position for centering + offset
-        x = (page_w_pt - target_w_pt) / 2.0
-        y = (page_h_pt - scaled_h) * (1 - vert_frac)
-
-        # 6) Draw the XObject
-        c.saveState()
-        c.translate(x, y)
-        c.scale(scale, scale)
-        c.doForm(form)
-        c.restoreState()
-
-        # 7) Finish and append
-        c.showPage()
-        c.save()
-        merger.append(cover_path)
-        temp_files.append(cover_path)
-
 
 def render_schedule_pdf(
     timed_events: list,
