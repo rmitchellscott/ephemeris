@@ -63,8 +63,8 @@ services:
       - ./config.yaml:/app/config.yaml
       - ./feeds_meta.yaml:/app/feeds_meta.yaml  # Used for change detection
     environment:
-      - TIMEZONE=America/Denver
-      - DATE_RANGE=week
+      - TIME_ZONE=America/Denver
+      - TIME_DATE_RANGE=week
 ```
 
 ### Docker
@@ -74,8 +74,8 @@ docker run --rm \
   -v "$(pwd)/output:/app/output" \
   -v "$(pwd)/config.yaml:/app/config.yaml" \
   -v "$(pwd)/feeds_meta.yaml:/app/feeds_meta.yaml" \
-  -e TIMEZONE=America/Denver \
-  -e DATE_RANGE=week \
+  -e TIME_ZONE=America/Denver \
+  -e TIME_DATE_RANGE=week \
   ghcr.io/rmitchellscott/ephemeris
 ```
 
@@ -83,7 +83,7 @@ docker run --rm \
 #### Setup
 
 - Python 3.8+
-- Dependencies: `icalendar`, `reportlab`, `PyPDF2`, `pytz`, `dateutil`, `yaml`
+- Dependencies: `cairosvg`, `icalendar`, `loguru`, `PyPDF2`, `pytz`, `pyyaml`, `reportlab`, `requests`, `webcolors`
 
 Install dependencies with:
 
@@ -94,7 +94,7 @@ pip install requirements.txt
 Set environment variables to customize the output:
 
 ```bash
-export TIMEZONE="America/New_York"
+export TIME_ZONE="America/New_York"
 ```
 Run the script:
 
@@ -105,92 +105,107 @@ python ephemeris.py
 
 #### reMarkable 1
 ```shell
-PDF_PAGE_SIZE=1404x1872
-PDF_DPI=226
+DOC_PAGE_DIMENSIONS=1404x1872
+DOC_PAGE_DPI=226
 ```
 #### reMarkable 2
 ```shell
-PDF_PAGE_SIZE=1404x1872
-PDF_DPI=226
+DOC_PAGE_DIMENSIONS=1404x1872
+DOC_PAGE_DPI=226
 ```
 #### reMarkable Paper Pro
 ```shell
-PDF_PAGE_SIZE=1620x2160
-PDF_DPI=229
+DOC_PAGE_DIMENSIONS=1620x2160
+DOC_PAGE_DPI=229
 ```
 #### Kindle Scribe*
 ```shell
-PDF_PAGE_SIZE=1860x2480
-PDF_DPI=300
+DOC_PAGE_DIMENSIONS=1860x2480
+DOC_PAGE_DPI=300
 ```
 #### Boox Note Air2 Plus
 ```shell
-PDF_PAGE_SIZE=1404x1872
-PDF_DPI=227
+DOC_PAGE_DIMENSIONS=1404x1872
+DOC_PAGE_DPI=227
 ```
 #### Boox Tab Ultra
 ```shell
-PDF_PAGE_SIZE=1404x1872
-PDF_DPI=227
+DOC_PAGE_DIMENSIONS=1404x1872
+DOC_PAGE_DPI=227
 ```
 #### Kobo Elipsa 2E
 ```shell
-PDF_PAGE_SIZE=1404x1872
-PDF_DPI=227
+DOC_PAGE_DIMENSIONS=1404x1872
+DOC_PAGE_DPI=227
 ```
 #### Supernote A5 X
 ```shell
-PDF_PAGE_SIZE=1404x1872
-PDF_DPI=226
+DOC_PAGE_DIMENSIONS=1404x1872
+DOC_PAGE_DPI=226
 ```
 
-<sub>*Information seems hard to find for the Kindle Scribe. If any of these values need correction, please open a GitHub Issue.</sub>
+#### TRMNL**
+```shell
+DOC_PAGE_DIMENSIONS=480x800
+DOC_PAGE_DPI=125
+```
+<sub>*Information seems hard to find for the Kindle Scribe. If any of these values need correction, please open a GitHub Issue.</sub>\
+<sub>**DPI might not be correct, will have a device for testing ~May 2025.</sub>
 
 ## Customization & Supported Environment Variables
 
-### Time
+### Time Configuration
 
-| Variable       | Default                   | Example          | Description                                                                          |
-|:---------------|:--------------------------|:-----------------|:-------------------------------------------------------------------------------------|
-| DATE_RANGE     | today           | today, week, month, 2025-04-14:2025-04-18 | Date range to create schedules for. Each day will be a single page. A single multi-page PDF will be rendered.   |
-| END_HOUR       | 21              | 21                                 | Defines the ending hour of the displayed daily schedule.  |
-| EXCLUDE_BEFORE | 0               | 4                                  | Excludes events with start times before this hour from the generated schedule.                        |
-| START_HOUR     | 6               | 6                                  | Defines the starting hour of the displayed daily schedule.   |
-| TIMEZONE       | UTC             | America/New_York                   | Sets the timezone used for interpreting event times.   |
-| TIME_FORMAT    | 24              | 12, 24                             | Specifies time formatting in 12-hour or 24-hour formats.   |
+| Variable            | Default        | Example                          | Description                                                                          |
+|:--------------------|:---------------|:---------------------------------|:-------------------------------------------------------------------------------------|
+| TIME_DATE_RANGE     | today          | today, week, month, 2025-04-14:2025-04-18 | Date range to create schedules for. Each day will be a single page. A single multi-page PDF will be rendered.   |
+| TIME_DISPLAY_END    | 21             | 21                               | Defines the ending hour of the displayed daily schedule.                             |
+| TIME_FILTER_MIN_HOUR| 0              | 4                                | Excludes events with start times before this hour from the generated schedule.       |
+| TIME_DISPLAY_START  | 6              | 6                                | Defines the starting hour of the displayed daily schedule.                           |
+| TIME_ZONE           | UTC            | America/New_York                 | Sets the timezone used for interpreting event times.                                 |
+| TIME_FORMAT         | 24             | 12, 24                           | Specifies time formatting in 12-hour or 24-hour formats.                             |
 
-### Program Behavior
+### Application Configuration
 
-| Variable       | Default                   | Example          | Description                                                                          |
-|:---------------|:--------------------------|:-----------------|:-------------------------------------------------------------------------------------|
-| FORCE_REFRESH  | false           | true, false                        |      Skip the changed events check and always render a PDF for each run. |
-| OUTPUT_PDF     | output/ephemeris.pdf |                               | Path and name for rendered PDF.  |
+| Variable            | Default                   | Example               | Description                                                         |
+|:--------------------|:--------------------------|:----------------------|:--------------------------------------------------------------------|
+| APP_CONFIG_PATH     | {BASE_DIR}/config.yaml   | /path/to/config.yaml   | Path to the configuration file.                                     |
+| APP_META_FILE_PATH  | {BASE_DIR}/feeds_meta.yaml| /path/to/meta.yaml    | Path to the feeds metadata file.                                    |
+| APP_OUTPUT_PATH     | output/ephemeris.pdf     | reports/schedule.pdf   | Path and name for rendered output file.                             |
+| APP_OUTPUT_FORMAT   | pdf                      | pdf                    | Output format for the generated schedule.                           |
+| APP_FORCE_REFRESH   | false                    | true, false            | Skip the changed events check and always render a document for each run. |
+| APP_LOG_LEVEL       | INFO                     | VISUAL, EVENTS, DEBUG, INFO, WARNING   | Minimum log level to output to console. EVENTS is useful for troubleshooting why events are appearing or not. VISUAL shows detailed drawing information for developer debugging.                         |
+| APP_LOG_COLORIZE    | true                     | true, false            | Whether to use ANSI colors in console log output.                   |
+| APP_LOG_FORMAT      | (see description)        | custom format string   | Loguru format string for console output. Default includes timestamp, level, and message. |
 
 ### Document Rendering
 
-| Variable       | Default                   | Example          | Description                                                                          |
-|:---------------|:--------------------------|:-----------------|:-------------------------------------------------------------------------------------|
-| ALLDAY_FROM    | grid            | grid, page                         | Select the left boundry for the "All-Day Events" box, either the main time grid or the left margin.   |
-| COVER_PAGE     | true            | true, false                        | Print a cover page with SVG as the rendered PDF's first page.         |
-| COVER_WIDTH_FRAC | 0.75          | 0 - 1                              | Fraction of page width to draw the cover SVG.                         |
-| COVER_VERT_FRAC | 0.25           | 0 - 1                              | Fraction of page height to center the cover SVG.                      |
-| DRAW_ALL_DAY   | true            | true, false                        | Set to `true` to draw the All Day Events, set to `false` to disable.  |
-| DRAW_MINICALS  | full            | full, current, false               | `full` will draw mini-calendars for the current and next month, `current` will draw only the current month, `false` will disable. |
-| EVENT_FILL     | gray14          | black,gray0, #000000               | Color for the background of events. CSS names, Ephemeris gray names, and hex supported. |
-| EVENT_STROKE   | gray(20%)       | black,gray0, #000000               | Color for the outline of events. CSS names, Ephemeris gray names, and hex supported.     |
-| FOOTER         | E P H E M E R I S         | updated, disabled, My Cool Footer  | Set to `updated` to print the "Updated at" timestamp, `disabled` to disable, or any text you want.  |
-| FOOTER_COLOR   | gray(60%)       | black,gray0, #000000             | Color for the page footer. CSS names, Ephemeris gray names, and hex supported.   |
-| GRIDLINE_COLOR | gray(20%)       | black, #000000                   | Color for the time grid lines. CSS names, Ephemeris gray names, and hex supported.   |
-| MINICAL_ALIGN  | right           | center, right, left                | Horizontal alignment for the mini-calenders. Center and Left are available when `DRAW_ALL_DAY` is `false`.  |
-| MINICAL_HEIGHT | 60              | 40                                 | Height of mini-calendars and All-Day Events area in points (1pt = 1/72in).   |
-| MINICAL_GAP    | 10              | 12                                 | Gap between each calender, and between calendars and other elements. In points (1pt = 1/72in).   |
-| PDF_DPI        | 226             | 300                                | DPI/PPI for rendered PDF.   |
-| PDF_PAGE_SIZE  | 1404x1872     | 1080x1920                          | Resolution for rendered PDF.   |
-| PDF_MARGIN_LEFT        | 6       | 12                                 | Left page margin in points (1pt = 1/72in).   |
-| PDF_MARGIN_RIGHT       | 6       | 12                                 | Right page margin in points (1pt = 1/72in).   |
-| PDF_MARGIN_TOP         | 9       | 12                                 | Top page margin in points (1pt = 1/72in).   |
-| PDF_MARGIN_BOTTOM      | 6       | 12                                 | Bottom page margin in points (1pt = 1/72in).   |
-| PDF_GRID_BOTTOM_BUFFER | 9       | 12                                 | Buffer between the bottom of the grid and the bottom margin in points (1pt = 1/72in). Useful for having a footer.  |
+| Variable                    | Default                   | Example                | Description                                                                          |
+|:----------------------------|:--------------------------|:-----------------------|:-------------------------------------------------------------------------------------|
+| DOC_COVER_SVG_PATH          | {BASE_DIR}/assets/cover.svg | /path/to/cover.svg     | Path to the SVG file used for the cover page.                                        |
+| DOC_COVER_ENABLED           | true                     | true, false             | Print a cover page with SVG as the rendered document's first page.                        |
+| DOC_COVER_WIDTH_SCALE       | 0.75                     | 0 - 1                   | Scale factor for the cover SVG width relative to page width.                         |
+| DOC_COVER_VERTICAL_POSITION | 0.25                     | 0 - 1                   | Vertical position factor for placing the cover SVG on the page.                      |
+| DOC_ALLDAY_BOUNDARY         | grid                     | grid, page              | Select the left boundary for the "All-Day Events" box, either the main time grid or the left margin. |
+| DOC_ALLDAY_MODE             | true                     | true, false             | Set to `true` to draw the All Day Events, set to `false` to disable.                 |
+| DOC_MINICAL_MODE            | full                     | full, current, false    | `full` will draw mini-calendars for the current and next month, `current` will draw only the current month, `false` will disable. |
+| DOC_MINICAL_ALIGN           | right                    | center, right, left     | Horizontal alignment for the mini-calendars. Center and Left are available when `DOC_ALLDAY_MODE` is `false`. |
+| DOC_MINICAL_HEIGHT          | 60                       | 40                      | Height of mini-calendars and All-Day Events area in points (1pt = 1/72in).           |
+| DOC_MINICAL_SPACING         | 10                       | 12                      | Gap between each calendar, and between calendars and other elements. In points (1pt = 1/72in). |
+| DOC_MINICAL_TEXT_PADDING    | 5                        | 8                       | Padding around text in mini-calendars in points (1pt = 1/72in).                      |
+| DOC_MINICAL_POSITION_OFFSET | 0                        | 5                       | Offset adjustment for mini-calendar positioning in points (1pt = 1/72in).            |
+| DOC_EVENT_FILL_COLOR        | gray14                   | black, gray0, #000000   | Color for the background of events. CSS names, Ephemeris gray names, and hex supported. |
+| DOC_EVENT_BORDER_COLOR      | gray(20%)                | black, gray0, #000000   | Color for the outline of events. CSS names, Ephemeris gray names, and hex supported. |
+| DOC_FOOTER_TEXT             | E P H E M E R I S        | updatedat, disabled, My Cool Footer | Set to `updatedat` to print the "Updated at" timestamp, `disabled` to disable, or any text you want. |
+| DOC_FOOTER_COLOR            | gray(60%)                | black, gray0, #000000   | Color for the page footer. CSS names, Ephemeris gray names, and hex supported.       |
+| DOC_GRID_LINE_COLOR         | gray(20%)                | black, #000000          | Color for the time grid lines. CSS names, Ephemeris gray names, and hex supported.   |
+| DOC_PAGE_DIMENSIONS         | 1404x1872                | 1080x1920               | Resolution for rendered document.       
+| DOC_PAGE_DPI                | 226                      | 300                     | DPI/PPI for rendered document.                                                            |                                                |
+| DOC_MARGIN_LEFT             | 6                        | 12                      | Left page margin in points (1pt = 1/72in).                                           |
+| DOC_MARGIN_RIGHT            | 6                        | 12                      | Right page margin in points (1pt = 1/72in).                                          |
+| DOC_MARGIN_TOP              | 9                        | 12                      | Top page margin in points (1pt = 1/72in).                                            |
+| DOC_MARGIN_BOTTOM           | 6                        | 12                      | Bottom page margin in points (1pt = 1/72in).                                         |
+| DOC_GRID_BOTTOM_PADDING     | 9                        | 12                      | Buffer between the bottom of the grid and the bottom margin in points (1pt = 1/72in). Useful for having a footer. |
 
 ## License
 
