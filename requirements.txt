@@ -1,9 +1,9 @@
-reportlab
+cairosvg
+icalendar
+loguru
+PyPDF2
 pytz
 pyyaml
+reportlab
 requests
-icalendar
 webcolors
-PyPDF2
-loguru
-cairosvg

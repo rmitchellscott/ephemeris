@@ -718,7 +718,7 @@ def render_schedule_pdf(
     now = datetime.now(tz_local)
     footer = settings.FOOTER
     page_bottom = settings.PDF_MARGIN_BOTTOM
-    if footer == "updated":
+    if footer == "updatedat":
         footer_text  = now.strftime("Updated: %Y-%m-%d %H:%M %Z")
     else:
         footer_text = footer

@@ -35,12 +35,8 @@ def main():
 
     # 3) Build list of dates to render
     dr = settings.DATE_RANGE
-    if dr:
-        date_list = parse_date_range(dr, tz_local)
-    else:
-        target = settings.TARGET_DATE
-        date_str = target or datetime.now(tz_local).strftime("%Y-%m-%d")
-        date_list = [datetime.strptime(date_str, "%Y-%m-%d").date()]
+
+    date_list = parse_date_range(dr, tz_local)
 
     # 4) Prepare PDF merger and temp files
     merger = PdfMerger()

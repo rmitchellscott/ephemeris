@@ -4,7 +4,7 @@ from loguru import logger
 
 def configure_logging(
     *,
-    level: str = "DEBUG",
+    level: str = "INFO",
     colorize: bool = True,
     format=(
         "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
@@ -18,8 +18,14 @@ def configure_logging(
     - colorize: whether to use ANSI colors in the console.
     - format: Loguru format string for console output.
     """
-    env_level = os.getenv("LOG_LEVEL", "").upper()
-    effective_level = env_level if env_level else (level or "DEBUG")
+    env_level = os.getenv("APP_LOG_LEVEL", "").upper()
+    env_colorize = os.getenv("APP_LOG_COLORIZE", "").lower()
+    env_format = os.getenv("APP_LOG_FORMAT", "")
+    
+    effective_level = env_level if env_level else (level or "INFO")
+    effective_colorize = env_colorize in ("1", "true", "yes") if env_colorize else colorize
+    effective_format = env_format if env_format else format
+    
     logger.remove()
 
     # Custom levels
@@ -29,7 +35,7 @@ def configure_logging(
     logger.add(
         sys.stdout,
         level=effective_level,
-        colorize=colorize,
-        format=format,
+        colorize=effective_colorize,
+        format=effective_format,
         enqueue=True,
     )
