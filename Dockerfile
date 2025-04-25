@@ -18,6 +18,7 @@ COPY --from=builder /install /usr/local
 
 COPY fonts /app/fonts
 COPY assets/cover.pdf /app/assets/cover.pdf
+COPY ephemeris /app/ephemeris
 COPY ephemeris.py .
 
 CMD ["python", "ephemeris.py"]
