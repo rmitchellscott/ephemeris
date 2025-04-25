@@ -19,7 +19,7 @@ from ephemeris.event_processing import (
 )
 from ephemeris.layout import get_page_size
 from ephemeris.utils import parse_date_range
-from ephemeris.renderers import render_cover, render_schedule_pdf
+from ephemeris.renderers import render_cover, render_schedule_pdf, export_pdf_to_png
 from ephemeris.logger import configure_logging
 
 
@@ -55,17 +55,13 @@ def main():
 
     if not settings.FORCE_REFRESH and last_anchor == anchor and prev_hash == new_hash:
         logger.info("No changes for {}, skipping generation.", anchor)
-        # print(f"🚫 No changes for {anchor}, skipping generation.")
         sys.exit(0)
 
     if settings.FORCE_REFRESH:
-        # print("🔄 FORCE_REFRESH set → full refresh.")
         logger.info("FORCE_REFRESH set, refreshing...")
     elif last_anchor != anchor:
-        # print(f"🔄 Date-range changed: {last_anchor} → {anchor}")
         logger.info("Date-range changed: {} → {}, refreshing...", last_anchor, anchor)
     else:
-        # print(f"✅ Events changed: {prev_hash[:8]} → {new_hash[:8]}")
         logger.info("Events changed, refreshing...")
 
     # 7) Build override map
@@ -74,10 +70,8 @@ def main():
 
     counts = Counter(cal_name for _, _, _, cal_name in raw_events)
     logger.debug("Event count by celender:")
-    # print("VEVENT count by calendar:")
     for cal_name, cnt in counts.items():
         logger.debug("   • {}: {} events", cal_name, cnt)
-        # print(f"   • {cal_name!r}: {cnt} events")
 
     # 8) Optionally render cover
     if settings.COVER_PAGE:
@@ -107,7 +101,6 @@ def main():
 
         # render schedule
         tmp = f"/tmp/schedule_{d.isoformat()}.pdf"
-        # render_schedule_pdf(timed, tmp, d, all_day_events=all_day)
         render_schedule_pdf(timed, tmp, d, all_day_events=all_day, tz_local=settings.TZ_LOCAL)
         logger.debug("Rendered {}",d)
         merger.append(tmp)
@@ -118,12 +111,25 @@ def main():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "wb") as f:
         merger.write(f)
-    # print(f"📄 Wrote {out_path}")
-    logger.info("Wrote file to {}", out_path)
+    logger.info("Wrote PDF to {}", out_path)
+    
+    if settings.FORMAT in ('png', 'both'):
+        png_dir = export_pdf_to_png(
+            pdf_path=out_path,
+            date_list=date_list,
+            cover=settings.COVER_PAGE,
+            output_dir=settings.OUTPUT_PNG,
+            dpi=settings.PDF_DPI,
+        )
+        logger.info("Exported PNGs to {}", png_dir)
+
+        # If the user only wants PNGs, remove the PDF:
+        if settings.FORMAT == 'png':
+            os.remove(out_path)
+            logger.info("Removed merged PDF at {}", out_path)
 
     # 11) Persist metadata
     save_meta({"_last_anchor": anchor, "events_hash": new_hash})
-    # print(f"✅ Completed generation for {anchor}")
     logger.info("✅ Completed generation for {}", anchor)
 
     # 12) Clean up

@@ -66,7 +66,6 @@ def assign_stacks(events: list[tuple]) -> list[dict]:
         logger.log("VISUAL", "Event layers for this cluster of events:")
         for idx, (start, end, title, meta) in cluster_events:
             li = assignments[idx]
-            # ts = lambda dt: dt.astimezone(tz_local).strftime("%H:%M")
             ts = lambda dt: dt.astimezone(settings.TZ_LOCAL).strftime("%H:%M")
             clean_title = str(title)
             logger.log("VISUAL","   • Layer {} {} [{} → {}]", li, clean_title, ts(start), ts(end))
@@ -82,7 +81,6 @@ def assign_stacks(events: list[tuple]) -> list[dict]:
                 'layer_index': li,
                 'width_frac': wf
             })
-        # logger.log("VISUAL", "----------------------------------------------------------------------")
     return result
 
 
@@ -159,8 +157,6 @@ def expand_event_for_day(
         dtend_date = comp.decoded('dtend')
         if isinstance(dtend_date, date):
             if start_raw <= target_date < dtend_date:
-                # st = datetime.combine(target_date, time.min).replace(tzinfo=tz_local)
-                # en = datetime.combine(target_date + timedelta(days=1), time.min).replace(tzinfo=tz_local)
                 st = sod
                 en = sod_next
                 meta = {'uid': uid, 'calendar_color': color, 'all_day': True}
@@ -182,7 +178,6 @@ def expand_event_for_day(
                         dt0 = dt0.replace(tzinfo=tz_local)
                     exdates.add(dt0)
         for occ in rule.between(sod, sod_next, inc=True):
-            # if occ in override_map.get(uid, set()) or occ in exdates:  {}:{}.",title, local_start.hour, local_start.minute)
             if occ in override_map.get(uid, set()):
                 logger.opt(colors=True).log("EVENTS","<yellow>Skipping occurrence (override exists):</yellow> '{}' at {:02d}:{:02d}.", comp.get('SUMMARY','Untitled'), occ.hour, occ.minute)
                 continue

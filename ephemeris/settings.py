@@ -10,7 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # File paths
 CONFIG_PATH  = Path(os.getenv("APP_CONFIG_PATH", str(BASE_DIR / "config.yaml")))
 META_FILE    = Path(os.getenv("APP_META_FILE_PATH", str(BASE_DIR / "feeds_meta.yaml")))
-OUTPUT_PDF   = os.getenv("APP_OUTPUT_PATH", "output/ephemeris.pdf")
+OUTPUT_PDF   = os.getenv("APP_OUTPUT_PDF_PATH", "output/ephemeris.pdf")
+OUTPUT_PNG   = os.getenv("APP_OUTPUT_PNG_DIR", "output/png")
 DEFAULT_COVER = os.getenv("DOC_COVER_SVG_PATH", str(BASE_DIR / "assets/cover.svg"))
 FONTS_DIR = BASE_DIR / "fonts"
 
