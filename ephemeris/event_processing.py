@@ -238,17 +238,18 @@ def filter_events_for_day(events: list[tuple], target_date: date) -> list[tuple]
     kept = []
     for st, en, title, meta in events:
         local_start = st
-        if meta.get('all_day'):
-            kept.append((st, en, title, meta))
-            continue
-        if local_start.date() != target_date:
-            continue
-        if local_start.hour < settings.EXCLUDE_BEFORE:
-            logger.opt(colors=True).log("EVENTS","<yellow>Dropped (too early):</yellow> '{}' at {}:{}.",title, local_start.hour, local_start.minute)
-            continue
-        if local_start.hour >= settings.END_HOUR:
-            logger.opt(colors=True).log("EVENTS","<yellow>Dropped (too late):</yellow> '{}' at {}:{}.",title, local_start.hour, local_start.minute)
-            continue
+        # if meta.get('all_day'):
+        #     kept.append((st, en, title, meta))
+        #     continue
+        if not meta.get('all_day'):
+            if local_start.date() != target_date:
+                continue
+            if local_start.hour < settings.EXCLUDE_BEFORE:
+                logger.opt(colors=True).log("EVENTS","<yellow>Dropped (too early):</yellow> '{}' at {}:{}.",title, local_start.hour, local_start.minute)
+                continue
+            if local_start.hour >= settings.END_HOUR:
+                logger.opt(colors=True).log("EVENTS","<yellow>Dropped (too late):</yellow> '{}' at {}:{}.",title, local_start.hour, local_start.minute)
+                continue
         tl = title.lower()
         status = meta.get('status','').lower()
         if any(v in tl for v in cancel_variants) or status in cancel_variants:

@@ -97,6 +97,7 @@ def main():
 
         # split and filter
         all_day, rest = split_all_day_events(instances, d, tz_local)
+        all_day = filter_events_for_day(all_day, d)
         timed = filter_events_for_day(rest, d)
 
         # sort all-day into pre-grid, true all-day, post-grid
