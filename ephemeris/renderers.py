@@ -615,6 +615,7 @@ def render_schedule_pdf(
             - 2 * text_padding
             - c.stringWidth(time_label, "Montserrat-Regular", time_font_size)
         )
+
         should_move_for_title = duration_minutes >= 60 and raw_title_w > inline_space
         hide_time = has_direct_above and duration_minutes < 60
         move_time = (has_direct_above and duration_minutes >= 60) or should_move_for_title
@@ -687,6 +688,21 @@ def render_schedule_pdf(
 
         c.setFont("Montserrat-Regular", time_font_size)
 
+        # Shift time horizontally if we have an overlapping event, but space to move it to
+        horizontal_shift = False
+        if duration_minutes < 60 and has_direct_above:
+            # find X of the overlapping box’s left edge
+            other_w = total_width * above_event["width_frac"]
+            other_x = layout["grid_right"] - other_w
+            # how many points from our left padding to that edge?
+            visible_space = (other_x - (box_x + 2 + text_padding))
+            # how much width do we need?
+            title_w = c.stringWidth(display_title, "Montserrat-Regular", title_font_size)
+            time_w  = c.stringWidth(time_label,    "Montserrat-Regular", time_font_size)
+            needed = title_w + time_w + text_padding
+            if needed <= visible_space:
+                horizontal_shift = True
+
         # Handle edge case where moving the time would force it off the grid
         if move_time:
             # compute the would-be y_time for the moved label
@@ -696,7 +712,14 @@ def render_schedule_pdf(
             if y_time < layout["grid_bottom"]:
                 move_time = False
                 hide_time = True
-        if hide_time:
+        if horizontal_shift:
+            logger.opt(colors=True).log("VISUAL","        <cyan>Moving time horizontally because overlapping event {} @ {}.</cyan>", above_event["title"],above_event['start'].strftime('%H:%M') )
+            other_w = total_width * above_event["width_frac"]
+            other_x = layout["grid_right"] - other_w
+            x_time = other_x - text_padding
+            y_time = y_start - y_offset
+            c.drawRightString(x_time, y_time, time_label)
+        elif hide_time:
             logger.opt(colors=True).log("VISUAL","        <yellow>Hiding time because overlapping event {} @ {}.</yellow>", above_event["title"],above_event['start'].strftime('%H:%M') )
         elif move_time:
             if should_move_for_title:
