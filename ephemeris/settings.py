@@ -1,8 +1,55 @@
 import os
+import re
 from dateutil import tz
 from datetime import datetime, date
 from pathlib import Path
 from loguru import logger
+
+# Date/time  helpers
+def today_date():
+    return date.today()
+
+def default_date_range():
+    return [today_date()]
+
+def _parse_hour(raw: str, use_24h: bool) -> int:
+    """
+    Parse a human–friendly hour string into 0–23.
+      - If it ends with AM/PM, A/P, or with dots (e.g. “6 a.m.”), parse as 12-hour.
+      - Otherwise, if use_24h, parse as a bare integer hour.
+      - Otherwise (12-hour mode with no suffix) raise an error.
+    """
+    s = raw.strip()
+    # normalize: remove dots and spaces around suffix
+    s_norm = re.sub(r'\.', '', s).replace(' ', '')
+    # look for a/p or am/pm at very end
+    m = re.search(r'(?i)([ap](?:m)?)$', s_norm)
+    if m:
+        suffix = m.group(1).lower()
+        # turn “a” → “am”, “p” → “pm”
+        if suffix in ('a', 'p'):
+            suffix += 'm'
+        base = s_norm[:m.start(1)]
+        candidate = (base + suffix).upper()
+        # try H PM then H:MM PM
+        for fmt in ("%I%p", "%I:%M%p"):
+            try:
+                return datetime.strptime(candidate, fmt).hour
+            except ValueError:
+                continue
+        logger.error("Cannot parse 12h time from '{}'.", raw)
+        raise ValueError(f"Cannot parse 12h time from '{raw}'")
+    # no a/p or am/pm suffix
+    try:
+        hour = int(s)
+    except ValueError:
+        logger.error("Non-integer hour when parsing 24-hour input: {!r}", raw)
+        raise ValueError(f"Invalid hour format: '{raw}'")
+    if not (0 <= hour < 24):
+        logger.error("24-hour hour out of range [0–23]: {!r}", raw)
+        raise ValueError(f"24-h hour out of range: '{raw}'")
+    return hour
+
 
 # Project root
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -17,13 +64,18 @@ FONTS_DIR = BASE_DIR / "fonts"
 
 TIMEZONE = os.getenv("TIME_ZONE", "UTC")
 DATE_RANGE = os.getenv("TIME_DATE_RANGE", "today")
-
-TZ_LOCAL = tz.gettz(TIMEZONE) or tz.tzutc()
-EXCLUDE_BEFORE = int(os.getenv("TIME_FILTER_MIN_HOUR", "0"))
-START_HOUR     = int(os.getenv("TIME_DISPLAY_START", "6"))
-END_HOUR       = int(os.getenv("TIME_DISPLAY_END", "21"))
 TIME_FORMAT    = os.getenv("TIME_FORMAT", "24")
 USE_24H        = TIME_FORMAT == "24"
+
+_raw_start = os.getenv("TIME_DISPLAY_START", "6")
+_raw_end   = os.getenv("TIME_DISPLAY_END",   "21")
+_raw_exclude_before = os.getenv("TIME_FILTER_MIN_HOUR", "0")
+
+
+TZ_LOCAL = tz.gettz(TIMEZONE) or tz.tzutc()
+START_HOUR = _parse_hour(_raw_start, USE_24H)
+END_HOUR   = _parse_hour(_raw_end,   USE_24H)
+EXCLUDE_BEFORE = _parse_hour(_raw_exclude_before, USE_24H)
 
 FORMAT       = os.getenv("APP_OUTPUT_FORMAT", "pdf").lower()
 COVER_PAGE   = os.getenv("DOC_COVER_ENABLED", "true").lower() not in ("0","false","no")
@@ -59,10 +111,3 @@ FORCE_REFRESH = os.getenv("APP_FORCE_REFRESH", "false").lower() in ("1", "true",
 # Cover
 COVER_WIDTH_FRAC = float(os.getenv("DOC_COVER_WIDTH_SCALE", 0.75))
 COVER_VERT_FRAC = float(os.getenv("DOC_COVER_VERTICAL_POSITION", 0.25))
-
-# Date helpers
-def today_date():
-    return date.today()
-
-def default_date_range():
-    return [today_date()]
