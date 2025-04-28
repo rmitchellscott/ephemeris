@@ -409,96 +409,6 @@ def render_schedule_pdf(
     all_day_label_font_size = (band_height * 0.33) / (len(label_lines) * 1.2)
     x_label = band_left + text_padding
 
-    if DRAW_ALL_DAY:
-        # Draw label string
-        c.setStrokeGray(0.2)
-        draw_centered_multiline(
-            c,
-            label_lines,
-            "Montserrat-SemiBold",
-            all_day_label_font_size,
-            x_label,
-            band_bottom,
-            band_height,
-            line_spacing=1.2
-        )
-
-        # Compute label‐column width
-        c.setFont("Montserrat-SemiBold", all_day_label_font_size)
-        label_w = max(c.stringWidth(line, "Montserrat-SemiBold", all_day_label_font_size)
-                        for line in label_lines)
-        label_area = label_w + 2*text_padding
-
-        n              = len(all_day_events)
-        slots_per_col  = 4
-        slot_h         = band_height / slots_per_col
-        cols           = 1 if n <= slots_per_col else 2
-        capacity       = slots_per_col * cols
-        to_draw        = all_day_events[:capacity]
-        events_left    = band_left + label_area
-        events_width   = band_right - events_left
-        slot_w         = events_width / cols
-        pad            = 2
-        bar_w          = 2
-
-        get_title_font_and_offset, _ = init_text_helpers(hour_height)
-
-        # Draw vertical separator
-        sep_x = events_left
-        # c.setStrokeGray(0.4)
-        c.setStrokeColor(black)
-        c.setLineWidth(0.5)
-        c.line(sep_x, band_bottom, sep_x, band_top)
-
-        # Draw box
-        c.setStrokeColor(black)
-        c.setLineWidth(0.5)
-        c.roundRect(band_left, band_bottom, band_width, band_height, 4, stroke=1, fill=0)
-
-        # Draw the actual all day events, if they exist
-        if all_day_events:
-
-            for idx, (_, _, title, meta) in enumerate(to_draw):
-                col = idx // slots_per_col
-                row = idx %  slots_per_col
-
-                x = events_left + col * slot_w + (2* pad)
-                y = band_top  - (row+1)*slot_h    + pad
-                w = slot_w   - pad*3
-                h = slot_h   - pad*2
-
-                c.setFillColor(HexColor(meta.get("calendar_color", "#FFFFFF")))
-                c.roundRect(x, y, w, h, 4, stroke=0, fill=1)
-                c.setFillColor(css_color_to_hex(event_fill))
-                c.setStrokeColor(css_color_to_hex(event_stroke))
-                c.setLineWidth(0.33)
-                c.roundRect(x + bar_w, y, w - bar_w, h, 4, stroke=1, fill=1)
-
-                # size the font as a fixed fraction of the box height
-                # e.g. use 40% of the box height
-                fraction = 0.6
-                fs = h * fraction
-                # enforce reasonable min/max so text never disappears or overflows
-                fs = max(6, min(fs, h * 0.8))
-                # now compute vertical centering baseline
-                face    = pdfmetrics.getFont("Montserrat-Regular").face
-                ascent  = face.ascent  / 1000 * fs
-                descent = face.descent / 1000 * fs
-                baseline = (h + ascent + descent) / 2.0
-                c.setFont("Montserrat-Regular", fs)
-
-                inner_w = (w - bar_w) - 4
-                txt     = title
-                while c.stringWidth(txt + "...", "Montserrat-Regular", fs) > inner_w:
-                    txt = txt[:-1]
-                if txt != title:
-                    txt = txt.rstrip() + "..."
-
-                text_y = y + h - baseline
-                c.setFillGray(0)
-                c.drawString(x + bar_w + 2, text_y, txt)
-
-
     if DRAW_MINICALS:
         today = date_label
         first_of_month = today.replace(day=1)
@@ -545,7 +455,6 @@ def render_schedule_pdf(
         draw_start = max(start, grid_start_dt)
         draw_end   = min(end,   grid_end_dt)
 
-        # if nothing is on‐grid, skip (or promote to all‐day)
         if draw_start >= draw_end:
             continue
 
@@ -734,6 +643,123 @@ def render_schedule_pdf(
             logger.log("VISUAL","        Drawing inline time; no overlapping event detected.", title, int(duration_minutes))
             y_time = y_start - y_offset
             c.drawRightString(box_x + box_width - text_padding, y_time, time_label)
+
+    if DRAW_ALL_DAY:
+        # Draw label string
+        c.setStrokeGray(0.2)
+        draw_centered_multiline(
+            c,
+            label_lines,
+            "Montserrat-SemiBold",
+            all_day_label_font_size,
+            x_label,
+            band_bottom,
+            band_height,
+            line_spacing=1.2
+        )
+
+        # Compute label‐column width
+        c.setFont("Montserrat-SemiBold", all_day_label_font_size)
+        label_w = max(c.stringWidth(line, "Montserrat-SemiBold", all_day_label_font_size)
+                        for line in label_lines)
+        label_area = label_w + 2*text_padding
+
+        n              = len(all_day_events)
+        slots_per_col  = 4
+        slot_h         = band_height / slots_per_col
+        cols           = 1 if n <= slots_per_col else 2
+        capacity       = slots_per_col * cols
+        to_draw        = all_day_events[:capacity]
+        events_left    = band_left + label_area
+        events_width   = band_right - events_left
+        slot_w         = events_width / cols
+        pad            = 2
+        bar_w          = 2
+
+        get_title_font_and_offset, _ = init_text_helpers(hour_height)
+
+        # Draw vertical separator
+        sep_x = events_left
+        # c.setStrokeGray(0.4)
+        c.setStrokeColor(black)
+        c.setLineWidth(0.5)
+        c.line(sep_x, band_bottom, sep_x, band_top)
+
+        # Draw box
+        c.setStrokeColor(black)
+        c.setLineWidth(0.5)
+        c.roundRect(band_left, band_bottom, band_width, band_height, 4, stroke=1, fill=0)
+
+        # Draw the actual all day events, if they exist
+        if all_day_events:
+
+            for idx, (st, en, title, meta) in enumerate(to_draw):
+                logger.debug("All-day event slot: {} → {} | {} | all_day? {}", st, en, title, meta.get("all_day"))
+                col = idx // slots_per_col
+                row = idx %  slots_per_col
+
+                x = events_left + col * slot_w + (2* pad)
+                y = band_top  - (row+1)*slot_h    + pad
+                w = slot_w   - pad*3
+                h = slot_h   - pad*2
+
+                c.setFillColor(HexColor(meta.get("calendar_color", "#FFFFFF")))
+                c.roundRect(x, y, w, h, 4, stroke=0, fill=1)
+                c.setFillColor(css_color_to_hex(event_fill))
+                c.setStrokeColor(css_color_to_hex(event_stroke))
+                c.setLineWidth(0.33)
+                c.roundRect(x + bar_w, y, w - bar_w, h, 4, stroke=1, fill=1)
+
+                # size the font as a fixed fraction of the box height
+                # e.g. use 40% of the box height
+                title_fraction = 0.6
+                time_fraction = 0.4
+
+                title_fs = h * title_fraction
+                time_fs = h * time_fraction
+                # enforce reasonable min/max so text never disappears or overflows
+                title_fs = max(6, min(title_fs, h * 0.8))
+                time_fs = max(4, min(time_fs, h * 0.8))
+                # now compute vertical centering baseline
+                title_face    = pdfmetrics.getFont("Montserrat-Regular").face
+                title_ascent  = title_face.ascent  / 1000 * title_fs
+                title_descent = title_face.descent / 1000 * title_fs
+                title_baseline = (h + title_ascent + title_descent) / 2.0
+                c.setFont("Montserrat-Regular", title_fs)
+
+                time_face    = pdfmetrics.getFont("Montserrat-Regular").face
+                time_ascent  = time_face.ascent  / 1000 * time_fs
+                time_descent = time_face.descent / 1000 * time_fs
+                time_baseline = (h + time_ascent + time_descent) / 2.0
+
+
+
+                inner_w = (w - bar_w) - 4
+                txt     = title
+
+                if not (st.time() == time.min and en.time() == time.min):
+                    time_label = meta.get('time_label', f"{fmt_time(st)}–{fmt_time(en)}")
+                    while c.stringWidth(txt + "...", "Montserrat-Regular", title_fs) + c.stringWidth(time_label, "Montserrat-Regular", time_fs) + text_padding > inner_w:
+                        txt = txt[:-1]
+                    if txt != title:
+                        txt = txt.rstrip() + "..."
+
+                    text_y = y + h - title_baseline
+                    time_y = y + h - time_baseline
+                    c.setFillGray(0)
+                    c.drawString(x + bar_w + 2, text_y, txt)
+
+                    c.setFont("Montserrat-Regular", time_fs)
+                    c.drawRightString(x + w - text_padding, time_y, time_label)
+                else:
+                    while c.stringWidth(txt + "...", "Montserrat-Regular", title_fs) > inner_w:
+                        txt = txt[:-1]
+                    if txt != title:
+                        txt = txt.rstrip() + "..."
+
+                    text_y = y + h - title_baseline
+                    c.setFillGray(0)
+                    c.drawString(x + bar_w + 2, text_y, txt)
 
     now = datetime.now(tz_local)
     footer = settings.FOOTER

@@ -90,7 +90,7 @@ def main():
             for st, en, title, meta_info in expand_event_for_day(comp, color, tzf, d, tz_local, override_map):
                 uid = meta_info.get("uid")
                 if uid in seen:
-                    logger.opt(Colors=True).debug("<yellow>Skipping duplicate: {}, {}. (UID: {})", title, start.isoformat(), uid)
+                    logger.opt(colors=True).debug("<yellow>Skipping duplicate: {}, {}. (UID: {}).</yellow>", title, st.isoformat(), uid)
                     continue
                 seen.add(uid)
                 instances.append((st, en, title, meta_info))
@@ -98,6 +98,32 @@ def main():
         # split and filter
         all_day, rest = split_all_day_events(instances, d, tz_local)
         timed = filter_events_for_day(rest, d)
+
+        # sort all-day into pre-grid, true all-day, post-grid
+        from datetime import datetime, time, timedelta
+        grid_start = datetime.combine(d, time(settings.EXCLUDE_BEFORE, 0), tzinfo=tz_local)
+        grid_end   = datetime.combine(d, time(settings.END_HOUR,   0), tzinfo=tz_local)
+        sod        = datetime.combine(d, time.min).replace(tzinfo=tz_local)
+        sod_next   = sod + timedelta(days=1)
+
+        pre, true_all, post, other = [], [], [], []
+        for st, en, title, meta in all_day:
+            if en <= grid_start:
+                pre.append((st,en,title,meta))
+            elif st >= grid_end:
+                post.append((st,en,title,meta))
+            elif st == sod and en == sod_next:
+                true_all.append((st,en,title,meta))
+            else:
+                other.append((st,en,title,meta))
+
+        # within each bucket, sort by start time
+        pre       .sort(key=lambda e: e[1])  # earliest-ending first
+        true_all  .sort(key=lambda e: e[0])  # (all equal sod, so stable)
+        other     .sort(key=lambda e: e[0])
+        post      .sort(key=lambda e: e[0])
+
+        all_day = pre + true_all + other + post
 
         # render schedule
         tmp = f"/tmp/schedule_{d.isoformat()}.pdf"
