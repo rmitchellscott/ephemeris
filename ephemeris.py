@@ -127,7 +127,7 @@ def main():
 
         # render schedule
         tmp = f"/tmp/schedule_{d.isoformat()}.pdf"
-        render_schedule_pdf(timed, tmp, d, all_day_events=all_day, tz_local=settings.TZ_LOCAL)
+        render_schedule_pdf(timed, tmp, d, all_day_events=all_day, tz_local=settings.TZ_LOCAL, all_day_in_grid=True)
         logger.debug("Rendered {}",d)
         merger.append(tmp)
         temp_files.append(tmp)
