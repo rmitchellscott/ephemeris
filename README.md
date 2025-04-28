@@ -189,6 +189,7 @@ DOC_PAGE_DPI=125
 | DOC_COVER_VERTICAL_POSITION | 0.25                     | 0 - 1                   | Vertical position factor for placing the cover SVG on the page.                      |
 | DOC_ALLDAY_BOUNDARY         | grid                     | grid, page              | Select the left boundary for the "All-Day Events" box, either the main time grid or the left margin. |
 | DOC_ALLDAY_MODE             | true                     | true, false             | Set to `true` to draw the All Day Events, set to `false` to disable.                 |
+| DOC_OVERFLOW_TO_ALLDAY |  true                         | true, false             | When true, events outside the main time grid hours are shown with all-day events. | 
 | DOC_MINICAL_MODE            | full                     | full, current, false    | `full` will draw mini-calendars for the current and next month, `current` will draw only the current month, `false` will disable. |
 | DOC_MINICAL_ALIGN           | right                    | center, right, left     | Horizontal alignment for the mini-calendars. Center and Left are available when `DOC_ALLDAY_MODE` is `false`. |
 | DOC_MINICAL_HEIGHT          | 60                       | 40                      | Height of mini-calendars and All-Day Events area in points (1pt = 1/72in).           |

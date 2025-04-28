@@ -79,6 +79,7 @@ EXCLUDE_BEFORE = _parse_hour(_raw_exclude_before, USE_24H)
 
 FORMAT       = os.getenv("APP_OUTPUT_FORMAT", "pdf").lower()
 COVER_PAGE   = os.getenv("DOC_COVER_ENABLED", "true").lower() not in ("0","false","no")
+CONVERT_OFFGRID_TO_ALLDAY = os.getenv("DOC_OVERFLOW_TO_ALLDAY", "true").lower() not in ("0","false","no")
 
 # Color defaults
 EVENT_FILL      = os.getenv("DOC_EVENT_FILL_COLOR", "gray14")

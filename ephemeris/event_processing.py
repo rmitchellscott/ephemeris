@@ -150,18 +150,17 @@ def expand_event_for_day(
     sod      = datetime.combine(target_date, time.min).replace(tzinfo=tz_local)
     sod_next = sod + timedelta(days=1)
 
-    #    Only catch VEVENTs whose raw DTSTART was a date (no time component).
     if isinstance(start_raw, date) and not isinstance(start_raw, datetime):
-        # `dtend` for a DATE-valued VEVENT is also a date, and is the day AFTER
-        # the last all-day instance.  Only expand if our target_date is in [start_raw, dtend).
         dtend_date = comp.decoded('dtend')
-        if isinstance(dtend_date, date):
-            if start_raw <= target_date < dtend_date:
-                st = sod
-                en = sod_next
-                meta = {'uid': uid, 'calendar_color': color, 'all_day': True}
-                return [(st, en, str(comp.get('SUMMARY','')), meta)]
+        if isinstance(dtend_date, date) and start_raw <= target_date < dtend_date:
+            st = sod
+            en = sod_next
+            meta = {'uid': uid, 'calendar_color': color, 'all_day': True}
+            return [(st, en, str(comp.get('SUMMARY','')), meta)]
+        # this date-only VEVENT does not include today
         return []
+    
+
     # Recurring
     raw_rr = comp.get('RRULE')
     if raw_rr:
@@ -188,14 +187,38 @@ def expand_event_for_day(
             en = (occ + (end - start)).astimezone(tz_local)
             meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
             instances.append((st, en, str(comp.get('SUMMARY','')), meta))
-        return instances
+        # return instances
 
     # One-off
     if isinstance(start, datetime) and start.date() == target_date:
         meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
         instances.append((start, end, str(comp.get('SUMMARY','')), meta))
 
-    return instances
+    # return instances+    final: list[tuple] = []
+    grid_start = sod.replace(hour=settings.EXCLUDE_BEFORE)
+    grid_end   = sod.replace(hour=settings.END_HOUR)
+    final = []
+    for st, en, title, meta in instances:
+        # skip if it doesn’t overlap today at all
+        if not (en > sod and st < sod_next):
+            continue
+
+        off_before = en <= grid_start
+        off_after  = st >= grid_end
+        # straddle   = st < grid_start or en > grid_end
+
+        if settings.CONVERT_OFFGRID_TO_ALLDAY and (off_before or off_after):
+            # clamp inside [sod, sod_next] so it passes date filters
+            new_st = max(st, sod)
+            new_en = min(en, sod_next)
+            m2 = meta.copy()
+            m2['all_day']    = True
+            m2['time_label'] = f"{fmt_time(st)}–{fmt_time(en)}"
+            final.append((new_st, new_en, title, m2))
+        else:
+            final.append((st, en, title, meta))
+
+    return final
 
 
 def split_all_day_events(events: list[tuple], target_date: date, tz_local) -> tuple:
@@ -215,6 +238,9 @@ def filter_events_for_day(events: list[tuple], target_date: date) -> list[tuple]
     kept = []
     for st, en, title, meta in events:
         local_start = st
+        if meta.get('all_day'):
+            kept.append((st, en, title, meta))
+            continue
         if local_start.date() != target_date:
             continue
         if local_start.hour < settings.EXCLUDE_BEFORE:
