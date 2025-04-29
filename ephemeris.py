@@ -101,7 +101,7 @@ def main():
 
         # sort all-day into pre-grid, true all-day, post-grid
         from datetime import datetime, time, timedelta
-        grid_start = datetime.combine(d, time(settings.EXCLUDE_BEFORE, 0), tzinfo=tz_local)
+        grid_start = datetime.combine(d, time(settings.START_HOUR, 0), tzinfo=tz_local)
         grid_end   = datetime.combine(d, time(settings.END_HOUR,   0), tzinfo=tz_local)
         sod        = datetime.combine(d, time.min).replace(tzinfo=tz_local)
         sod_next   = sod + timedelta(days=1)
@@ -127,7 +127,7 @@ def main():
 
         # render schedule
         tmp = f"/tmp/schedule_{d.isoformat()}.pdf"
-        render_schedule_pdf(timed, tmp, d, all_day_events=all_day, tz_local=settings.TZ_LOCAL, all_day_in_grid=True)
+        render_schedule_pdf(timed, tmp, d, all_day_events=all_day, tz_local=settings.TZ_LOCAL, all_day_in_grid=settings.ALLDAY_IN_GRID)
         logger.debug("Rendered {}",d)
         merger.append(tmp)
         temp_files.append(tmp)
