@@ -107,6 +107,7 @@ def draw_mini_cal(c, year, month, weeks, x, y, mini_w, mini_h, highlight_day=Non
             cx = xx + cell_w/2
             # vertical offset: roughly center. adjust v_off if you like.
             v_off = cell_h/2 - 2
+            c.setFont("Montserrat-Regular", 6)
 
             if highlight_day and day == highlight_day:
                 # draw black highlight box
@@ -126,13 +127,16 @@ def draw_mini_cal(c, year, month, weeks, x, y, mini_w, mini_h, highlight_day=Non
                 # internal link rectangle
                 dest_name = f"{year:04d}-{month:02d}-{day:02d}"
                 if dest_name in valid:
-                    x1, y1 = xx, yy
-                    x2, y2 = xx + cell_w, yy + cell_h
-                    c.linkAbsolute(
-                        "", dest_name,
-                        Rect=(x1, y1, x2, y2),
-                        Border='[0 0 0]'
-                    )
+                    if settings.CREATE_LINKS:
+                        x1, y1 = xx, yy
+                        x2, y2 = xx + cell_w, yy + cell_h
+                        c.linkAbsolute(
+                            "", dest_name,
+                            Rect=(x1, y1, x2, y2),
+                            Border='[0 0 0]'
+                        )
+                    if settings.INDICATE_DAYS:
+                        c.setFont("Montserrat-Medium", 6)
                 # normal day, centered
                 c.drawCentredString(cx, yy + v_off, str(day))
 
@@ -755,7 +759,7 @@ def render_schedule_pdf(
         if all_day_events:
 
             for idx, (st, en, title, meta) in enumerate(to_draw):
-                logger.debug("All-day event slot: {} → {} | {} | all_day? {}", st, en, title, meta.get("all_day"))
+                logger.log("EVENTS","All-day event slot: {} → {} | {} | all_day? {}", st, en, title, meta.get("all_day"))
                 col = idx // slots_per_col
                 row = idx %  slots_per_col
 

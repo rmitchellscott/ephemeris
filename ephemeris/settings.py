@@ -80,6 +80,8 @@ EXCLUDE_BEFORE = _parse_hour(_raw_exclude_before, USE_24H)
 FORMAT       = os.getenv("APP_OUTPUT_FORMAT", "pdf").lower()
 COVER_PAGE   = os.getenv("DOC_COVER_ENABLED", "true").lower() not in ("0","false","no")
 CONVERT_OFFGRID_TO_ALLDAY = os.getenv("DOC_OVERFLOW_TO_ALLDAY", "true").lower() not in ("0","false","no")
+CREATE_LINKS = os.getenv("DOC_MINICAL_LINKS", "true").lower() not in ("0","false","no")
+INDICATE_DAYS = os.getenv("DOC_MINICAL_INDICATE_RANGE", "true").lower() not in ("0","false","no")
 
 ALLDAY_MODE = os.getenv("DOC_ALLDAY_MODE", "band").lower()
 DRAW_ALL_DAY_BAND  = ALLDAY_MODE == "band"
