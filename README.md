@@ -106,6 +106,9 @@ Run the script:
 ```bash
 python ephemeris.py
 ```
+
+For guidence on sending to your device, see the [project's wiki](https://github.com/rmitchellscott/ephemeris/wiki).
+
 ## Common Device Parameters
 
 #### reMarkable 1
