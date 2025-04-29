@@ -14,6 +14,7 @@ Ephemeris is a Python-based tool that generates clean, daily schedules using ICS
 - **Automated Schedule Generation**: Seamlessly convert ICS calendar data into organized daily planners.
 - **Customizable Layout**: Adjust your daily schedule's layout, timeframe, and appearance via environment variables.
 - **Elegant PDF Output**: Clean PDFs designed specifically for e-ink devices.
+- **Links to Days**: Mini-Calendar days are clickable links.
 
 ## Screenshots
 
@@ -195,6 +196,8 @@ DOC_PAGE_DPI=125
 | DOC_ALLDAY_MODE             | band                     | band, in-grid, disabled | Set to `band` to draw the All-Day Events in their own band at the top, set to `in-grid` to draw all day events in the "zeroth" hour of the main time grid, set to `disabled` to disable All-Day Events from being drawn. |
 | DOC_ALLDAY_OVERFLOW         |  true                    | true, false        | When true, events outside the main time grid hours are shown with All-Day Events. | 
 | DOC_MINICAL_MODE            | full                     | full, current, false    | `full` will draw mini-calendars for the current and next month, `current` will draw only the current month, `disabled` will disable. |
+| DOC_MINICAL_LINKS           | true                     | true, false             | Add links to mini-cal days that have pages rendered. |
+| DOC_MINICAL_INDICATE_RANGE  | true                     | true, false             | Indicate which days are in the document by slightly bolding them in the mini-calendars. |
 | DOC_MINICAL_ALIGN           | right                    | center, right, left     | Horizontal alignment for the mini-calendars. Center and Left are available when `DOC_ALLDAY_MODE` is set to anything other than `band`. |
 | DOC_MINICAL_HEIGHT          | 60                       | 40                      | Height of mini-calendars and All-Day Events area in points (1pt = 1/72in).           |
 | DOC_MINICAL_SPACING         | 10                       | 12                      | Gap between each calendar, and between calendars and other elements. In points (1pt = 1/72in). |

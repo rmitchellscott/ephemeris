@@ -23,6 +23,7 @@ def init_fonts(fonts_dir: Path | None = None) -> None:
         ("Montserrat-Bold",       "Montserrat-Bold.ttf"),
         ("Montserrat-SemiBold",   "Montserrat-SemiBold.ttf"),
         ("Montserrat-Light",      "Montserrat-Light.ttf"),
+        ("Montserrat-Medium",      "Montserrat-Medium.ttf"),
     ]
 
     for name, fname in fonts:
