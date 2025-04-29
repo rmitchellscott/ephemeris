@@ -204,8 +204,15 @@ def draw_centered_multiline(
         y = y_first + (len(lines)-1 - i) * line_height
         c.drawString(x, y, line)
 
-def render_time_grid(c, date_label, layout):
+def render_time_grid(
+    c,
+    date_label,
+    layout,
+    override_label_hour: int | None   = None,
+    override_label_text: list[str] | None = None,
+):
     GRIDLINE_COLOR = settings.GRIDLINE_COLOR
+    text_padding = layout["text_padding"]
 
     # Vertical line
     c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
@@ -223,7 +230,7 @@ def render_time_grid(c, date_label, layout):
     # Draw the grid heading
     c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
     c.setFont("Montserrat-SemiBold", 10)
-    c.drawString((layout["grid_left"] +0.25), (layout["grid_top"] + 0.25 + layout["text_padding"]), "Schedule")
+    c.drawString((layout["grid_left"] +0.25), (layout["grid_top"] + 0.25 + text_padding), "Schedule")
 
     # Draw the horizontal hour lines and labels
     for hour in range(layout["start_hour"], layout["end_hour"] + 1):
@@ -236,15 +243,37 @@ def render_time_grid(c, date_label, layout):
             c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
             c.setLineWidth(0.5)
         c.line(layout["grid_left"], y, layout["grid_right"], y)
-        # Draw the time label
-        c.setFillGray(0.2)
-        c.setFont("Montserrat-SemiBold", 7)
-        label = f"{hour:02}:00" if settings.USE_24H else datetime.combine(date_label, time(hour=hour)).strftime("%-I %p")
-        c.drawRightString(
-            layout["grid_left"] - 5,
-            y - 2,
-            label
-        )
+        # Draw either the override text or the normal time
+        if override_label_hour is not None \
+           and override_label_text is not None \
+           and hour == override_label_hour:
+            # two-line centered label inside this hour-slot
+            c.setFillGray(0.2)
+            c.setFont("Montserrat-SemiBold", 7)
+            c.drawRightString(
+                layout["grid_left"] - 7,
+                y + 2,
+                "All",
+            )
+            c.drawRightString(
+                layout["grid_left"] - 5,
+                y - 6,
+                "Day",
+            )
+
+        else:
+            c.setFillGray(0.2)
+            c.setFont("Montserrat-SemiBold", 7)
+            label = (
+                f"{hour:02}:00"
+                if settings.USE_24H
+                else datetime.combine(date_label, time(hour=hour)).strftime("%-I %p")
+            )
+            c.drawRightString(
+                layout["grid_left"] - 5,
+                y - 2,
+                label,
+            )
 
 def render_cover(
      merger: PdfMerger,
@@ -317,6 +346,7 @@ def render_schedule_pdf(
     event_fill: str     = settings.EVENT_FILL,
     event_stroke: str   = settings.EVENT_STROKE,
     footer_color: str   = settings.FOOTER_COLOR,
+    all_day_in_grid: bool = False,
 ):
     """
     Draw a full-day schedule:
@@ -327,11 +357,15 @@ def render_schedule_pdf(
       • each timed_event, stacked/ellipsized
       • footer
     """
+
+    # Determine effective start hour (shift back one if in-grid)
+    eff_start = start_hour - 1 if all_day_in_grid else start_hour 
+    
     width, height = get_page_size()
     c = canvas.Canvas(output_path, pagesize=(width, height))
-    layout = get_layout_config(width, height, start_hour, end_hour)
+    layout    = get_layout_config(width, height, eff_start, end_hour)
     text_padding = layout["text_padding"]
-    DRAW_ALL_DAY = settings.DRAW_ALL_DAY
+    DRAW_ALL_DAY_BAND = settings.DRAW_ALL_DAY_BAND
     DRAW_MINICALS = settings.DRAW_MINICALS
     MINICAL_ALIGN = settings.MINICAL_ALIGN
     page_top = layout["page_top"]
@@ -361,7 +395,7 @@ def render_schedule_pdf(
 
 
     # Force right alignment of mini-cals if we're drawing the all-day band
-    if DRAW_ALL_DAY:
+    if DRAW_ALL_DAY_BAND:
         MINICAL_ALIGN = "right"
 
     # Header/title
@@ -429,7 +463,14 @@ def render_schedule_pdf(
                     weeks2, x_start + mini_w + gap, y_cal, mini_w, mini_h)
 
     # Main Grid
-    render_time_grid(c, date_label, layout)
+    if all_day_in_grid:
+        render_time_grid(
+            c, date_label, layout,
+            override_label_hour=eff_start,
+            override_label_text=["All Day", "Events"],
+        )
+    else:
+        render_time_grid(c, date_label, layout)
 
     # Events
     get_title_font_and_offset, get_time_font_and_offset = init_text_helpers(hour_height)
@@ -644,7 +685,9 @@ def render_schedule_pdf(
             y_time = y_start - y_offset
             c.drawRightString(box_x + box_width - text_padding, y_time, time_label)
 
-    if DRAW_ALL_DAY:
+    bar_w          = 2
+    
+    if DRAW_ALL_DAY_BAND:
         # Draw label string
         c.setStrokeGray(0.2)
         draw_centered_multiline(
@@ -674,7 +717,6 @@ def render_schedule_pdf(
         events_width   = band_right - events_left
         slot_w         = events_width / cols
         pad            = 2
-        bar_w          = 2
 
         get_title_font_and_offset, _ = init_text_helpers(hour_height)
 
@@ -760,6 +802,70 @@ def render_schedule_pdf(
                     text_y = y + h - title_baseline
                     c.setFillGray(0)
                     c.drawString(x + bar_w + 2, text_y, txt)
+
+    if all_day_in_grid and all_day_events:
+        # slot_h = layout["hour_height"] * 0.25
+        # ─── split into columns ───────────────────────────
+        n               = len(all_day_events)
+        slots_per_col   = 4
+        if   n <= slots_per_col:
+            cols = 1
+        else:
+            cols = 2
+        capacity        = slots_per_col * cols
+        events_to_draw  = all_day_events[:capacity]
+
+        # height and width per slot
+        slot_h = layout["hour_height"] * 0.25
+        total_w = layout["grid_right"] - layout["grid_left"]
+        col_w   = total_w / cols
+        for idx, (st, en, title, meta) in enumerate(all_day_events):
+            # x = layout["grid_left"] + 0
+            # y = layout["grid_top"] - idx * slot_h
+            # w = layout["grid_right"] - layout["grid_left"] - 0
+            # h = slot_h - 0
+            col = idx // slots_per_col
+            row = idx %  slots_per_col
+
+            # position in multi-col grid
+            x = layout["grid_left"] + col * col_w
+            y = layout["grid_top"]  - row * slot_h
+            w = col_w
+            h = slot_h
+
+            c.setFillColor(HexColor(meta.get("calendar_color", "#FFFFFF")))
+            c.roundRect(x, y-h, w, h, 4, stroke=0, fill=1)
+            c.setFillColor(css_color_to_hex(event_fill))
+            c.setStrokeColor(css_color_to_hex(event_stroke))
+            c.setLineWidth(0.33)
+            c.roundRect(x + bar_w, y - h, w - bar_w, h, 4, stroke=1, fill=1)
+
+            fs_title, title_offset = get_title_font_and_offset(15)
+            fs_time,  time_offset  = get_time_font_and_offset(15)
+
+            # only show a time-label if not true 00:00–00:00
+            show_time = not (st.time() == time.min and en.time() == time.min)
+            label = title
+            if show_time:
+                tl = f"{fmt_time(st)}–{fmt_time(en)}"
+                # truncate title to fit
+                while c.stringWidth(label + '…', "Montserrat-Regular", h*0.5) + c.stringWidth(tl, "Montserrat-Regular", h*0.3) + 4 > w:
+                    label = label[:-1]
+                if label != title:
+                    label = label.rstrip() + '…'
+
+            # draw text
+            y_top = y         # this is the top of our 15-min block
+            c.setFillColor(black)
+            # title line
+            text_y = y_top - title_offset
+            c.setFont("Montserrat-Regular", fs_title)
+            c.drawString(x + 4, text_y, label)
+            # optional time line
+            if show_time:
+                time_y = y_top - time_offset
+                c.setFont("Montserrat-Regular", fs_time)
+                c.drawRightString(x + w - 4, time_y, tl)
 
     now = datetime.now(tz_local)
     footer = settings.FOOTER

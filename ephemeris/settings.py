@@ -81,6 +81,11 @@ FORMAT       = os.getenv("APP_OUTPUT_FORMAT", "pdf").lower()
 COVER_PAGE   = os.getenv("DOC_COVER_ENABLED", "true").lower() not in ("0","false","no")
 CONVERT_OFFGRID_TO_ALLDAY = os.getenv("DOC_OVERFLOW_TO_ALLDAY", "true").lower() not in ("0","false","no")
 
+ALLDAY_MODE = os.getenv("DOC_ALLDAY_MODE", "band").lower()
+DRAW_ALL_DAY_BAND  = ALLDAY_MODE == "band"
+ALLDAY_IN_GRID     = ALLDAY_MODE == "in-grid"
+DRAW_ALL_DAY       = ALLDAY_MODE in ("band", "in-grid")
+
 # Color defaults
 EVENT_FILL      = os.getenv("DOC_EVENT_FILL_COLOR", "gray14")
 EVENT_STROKE    = os.getenv("DOC_EVENT_BORDER_COLOR", "gray(20%)")
@@ -99,7 +104,6 @@ ALLDAY_FROM   = os.getenv("DOC_ALLDAY_BOUNDARY",   "grid").lower()
 MINICAL_TEXT_PADDING= float(os.getenv("DOC_MINICAL_TEXT_PADDING", 5))
 MINICAL_OFFSET = float(os.getenv("DOC_MINICAL_POSITION_OFFSET", 0))
 PDF_GRID_BOTTOM_BUFFER = float(os.getenv("DOC_GRID_BOTTOM_PADDING", 9))
-DRAW_ALL_DAY  = os.getenv("DOC_ALLDAY_MODE",  "true").lower() in ("1","true","yes")
 minical_mode = os.getenv("DOC_MINICAL_MODE", "full").strip().lower()
 DRAW_MINICALS = minical_mode not in ("false", "0", "no", "disabled", "disable")
 PDF_PAGE_SIZE= os.getenv("DOC_PAGE_DIMENSIONS", "1404x1872")  # Default to reMarkable 2
