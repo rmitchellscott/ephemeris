@@ -7,6 +7,30 @@ from loguru import logger
 import ephemeris.settings as settings
 from ephemeris.utils import fmt_time
 
+def _get_raw_end(comp):
+    """
+    Return a datetime for the event’s end:
+      1) Try DTEND
+      2) Else add DURATION to DTSTART
+      3) Else warn and use DTSTART itself
+    """
+    try:
+        return comp.decoded('dtend')
+    except KeyError:
+        dur_prop = comp.get('DURATION')
+        if dur_prop:
+            try:
+                return comp.decoded('dtstart') + comp.decoded('duration')
+            except Exception as e:
+                title = comp.get('SUMMARY', '<no title>')
+                logger.log("EVENTS","Failed to apply DURATION for event '{}': {}", title, e)
+        title = comp.get('SUMMARY', '<no title>')
+        logger.log("EVENTS",
+            "Event '{}' missing DTEND and DURATION, treating as instantaneous",
+            title
+        )
+        return comp.decoded('dtstart')
+
 
 def assign_stacks(events: list[tuple]) -> list[dict]:
     """
@@ -113,7 +137,7 @@ def expand_event_for_day(
     instances = []
     uid = comp.get('UID')
 
-    # Decode raw DTSTART and DTEND or duration
+    # Decode raw DTSTART and inline‐fallback DTEND/duration (so normalize() always has something)
     start_raw = comp.decoded('dtstart')
     if comp.get('dtend'):
         end_raw = comp.decoded('dtend')
@@ -151,8 +175,10 @@ def expand_event_for_day(
     sod_next = sod + timedelta(days=1)
 
     if isinstance(start_raw, date) and not isinstance(start_raw, datetime):
-        dtend_date = comp.decoded('dtend')
-        if isinstance(dtend_date, date) and start_raw <= target_date < dtend_date:
+        # use helper to avoid KeyError if no DTEND
+        dtend_raw = _get_raw_end(comp)
+        dtend_date = dtend_raw if isinstance(dtend_raw, date) else dtend_raw.date()
+        if start_raw <= target_date < dtend_date:
             st = sod
             en = sod_next
             meta = {'uid': uid, 'calendar_color': color, 'all_day': True}
@@ -165,6 +191,8 @@ def expand_event_for_day(
     raw_rr = comp.get('RRULE')
     if raw_rr:
         rule = rrulestr(raw_rr.to_ical().decode(), dtstart=start_raw if isinstance(start_raw, datetime) else None)
+        end_raw   = _get_raw_end(comp)
+        end0    = normalize(end_raw, 'dtend')
         # build exdates
         exdates = set()
         ex_prop = comp.get('EXDATE')
@@ -184,13 +212,16 @@ def expand_event_for_day(
                 logger.opt(colors=True).log("EVENTS","<yellow>Skipping occurrence (excluded for this day):</yellow> '{}' at {:02d}:{:02d}.", comp.get('SUMMARY','Untitled'), occ.hour, occ.minute)
                 continue
             st = occ.astimezone(tz_local)
-            en = (occ + (end - start)).astimezone(tz_local)
+            # en = (occ + (end - start)).astimezone(tz_local)
+            en = (occ + (end0 - start)).astimezone(tz_local)
             meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
             instances.append((st, en, str(comp.get('SUMMARY','')), meta))
         # return instances
 
     # One-off
     if isinstance(start, datetime) and start.date() == target_date:
+        end_raw = _get_raw_end(comp)
+        end     = normalize(end_raw, 'dtend')
         meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
         instances.append((start, end, str(comp.get('SUMMARY','')), meta))
 
@@ -238,9 +269,6 @@ def filter_events_for_day(events: list[tuple], target_date: date) -> list[tuple]
     kept = []
     for st, en, title, meta in events:
         local_start = st
-        # if meta.get('all_day'):
-        #     kept.append((st, en, title, meta))
-        #     continue
         if not meta.get('all_day'):
             if local_start.date() != target_date:
                 continue
