@@ -92,6 +92,7 @@ def draw_mini_cal(c, year, month, weeks, x, y, mini_w, mini_h, highlight_day=Non
         hx = x + i*cell_w + cell_w/2
         c.drawCentredString(hx, y + mini_h - 6, d)
 
+    valid = getattr(c, "_valid_destinations", set())
     # Day numbers
     for row_i, week in enumerate(weeks):
         for col_i, day in enumerate(week):
@@ -122,6 +123,16 @@ def draw_mini_cal(c, year, month, weeks, x, y, mini_w, mini_h, highlight_day=Non
                 c.setFont("Montserrat-Regular", 6)
 
             else:
+                # internal link rectangle
+                dest_name = f"{year:04d}-{month:02d}-{day:02d}"
+                if dest_name in valid:
+                    x1, y1 = xx, yy
+                    x2, y2 = xx + cell_w, yy + cell_h
+                    c.linkAbsolute(
+                        "", dest_name,
+                        Rect=(x1, y1, x2, y2),
+                        Border='[0 0 0]'
+                    )
                 # normal day, centered
                 c.drawCentredString(cx, yy + v_off, str(day))
 
@@ -276,8 +287,7 @@ def render_time_grid(
             )
 
 def render_cover(
-     merger: PdfMerger,
-     temp_files: list,
+     c: canvas.Canvas,
      cover_src: str,
      page_w_pt: float,
      page_h_pt: float,
@@ -318,8 +328,7 @@ def render_cover(
      cover_path = tf.name
      tf.close()
  
-     # 8) Create one-page PDF & draw
-     c = canvas.Canvas(cover_path, pagesize=(page_w_pt, page_h_pt))
+     # 8) Draw directly to the canvas
      c.drawImage(
          img, x, y,
          width=img_w_pt,
@@ -327,12 +336,6 @@ def render_cover(
          mask="auto",
          preserveAspectRatio=True
      )
-     c.showPage()
-     c.save()
- 
-     # 9) Append & register for cleanup
-     merger.append(cover_path)
-     temp_files.append(cover_path)
 
 def render_schedule_pdf(
     timed_events: list,
@@ -347,6 +350,8 @@ def render_schedule_pdf(
     event_stroke: str   = settings.EVENT_STROKE,
     footer_color: str   = settings.FOOTER_COLOR,
     all_day_in_grid: bool = False,
+    valid_dates: list[datetime.date] = None,
+    canvas_obj: canvas.Canvas = None,
 ):
     """
     Draw a full-day schedule:
@@ -357,12 +362,12 @@ def render_schedule_pdf(
       • each timed_event, stacked/ellipsized
       • footer
     """
-
     # Determine effective start hour (shift back one if in-grid)
     eff_start = start_hour - 1 if all_day_in_grid else start_hour 
     
     width, height = get_page_size()
-    c = canvas.Canvas(output_path, pagesize=(width, height))
+    # if they passed in a canvas, draw onto that; otherwise make our own
+    c = canvas_obj
     layout    = get_layout_config(width, height, eff_start, end_hour)
     text_padding = layout["text_padding"]
     DRAW_ALL_DAY_BAND = settings.DRAW_ALL_DAY_BAND
@@ -382,6 +387,17 @@ def render_schedule_pdf(
     MINICAL_HEIGHT = settings.MINICAL_HEIGHT
     MINICAL_OFFSET = settings.MINICAL_OFFSET
     ALLDAY_FROM = settings.ALLDAY_FROM
+
+    # Link prep
+    if valid_dates is not None:
+            c._valid_destinations = {
+                d.strftime("%Y-%m-%d")
+                for d in valid_dates
+            }
+    else:
+        c._valid_destinations = set()
+    page_dest = date_label.strftime("%Y-%m-%d")
+    c.bookmarkPage(page_dest)
 
     logger.log("VISUAL","Page size:")
     logger.log("VISUAL","   pixels: {}", settings.PDF_PAGE_SIZE)
@@ -823,10 +839,6 @@ def render_schedule_pdf(
         total_w = layout["grid_right"] - layout["grid_left"]
         col_w   = total_w / cols
         for idx, (st, en, title, meta) in enumerate(all_day_events):
-            # x = layout["grid_left"] + 0
-            # y = layout["grid_top"] - idx * slot_h
-            # w = layout["grid_right"] - layout["grid_left"] - 0
-            # h = slot_h - 0
             col = idx // slots_per_col
             row = idx %  slots_per_col
 
@@ -890,7 +902,7 @@ def render_schedule_pdf(
     # c.line(page_right, page_top, page_left, page_top)
     # c.line(page_right, page_bottom, page_left, page_bottom)
 
-    c.save()
+    c.showPage()
     
 def export_pdf_to_png(pdf_path: str,
                       date_list: list,

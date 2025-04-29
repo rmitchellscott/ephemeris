@@ -5,6 +5,8 @@ from collections import Counter, defaultdict
 
 from PyPDF2 import PdfMerger
 from loguru import logger
+from reportlab.pdfgen import canvas
+
 
 import ephemeris.settings as settings
 from ephemeris.fonts import init_fonts
@@ -38,9 +40,10 @@ def main():
 
     date_list = parse_date_range(dr, tz_local)
 
-    # 4) Prepare PDF merger and temp files
-    merger = PdfMerger()
-    temp_files = []
+    # 4) Prepare canvas
+    out_pdf = settings.OUTPUT_PDF
+    os.makedirs(os.path.dirname(out_pdf), exist_ok=True)
+    c = canvas.Canvas(out_pdf, pagesize=get_page_size())
 
     # 5) Load config, metadata, and events
     config = load_config()
@@ -69,7 +72,7 @@ def main():
     override_map = build_override_map(raw_events)
 
     counts = Counter(cal_name for _, _, _, cal_name in raw_events)
-    logger.debug("Event count by celender:")
+    logger.debug("Event count by calender:")
     for cal_name, cnt in counts.items():
         logger.debug("   • {}: {} events", cal_name, cnt)
 
@@ -78,7 +81,8 @@ def main():
         logger.debug("Rendering cover page")
         w, h = get_page_size()
         cover_src = settings.DEFAULT_COVER
-        render_cover(merger, temp_files, cover_src, w, h)
+        render_cover(c, cover_src, w, h)
+        c.showPage()
 
     # 9) Per-day expansion & rendering
     for d in date_list:
@@ -128,21 +132,16 @@ def main():
 
         # render schedule
         tmp = f"/tmp/schedule_{d.isoformat()}.pdf"
-        render_schedule_pdf(timed, tmp, d, all_day_events=all_day, tz_local=settings.TZ_LOCAL, all_day_in_grid=settings.ALLDAY_IN_GRID)
+        render_schedule_pdf(timed, tmp, d, all_day_events=all_day, tz_local=settings.TZ_LOCAL, all_day_in_grid=settings.ALLDAY_IN_GRID, valid_dates=date_list, canvas_obj=c)
         logger.debug("Rendered {}",d)
-        merger.append(tmp)
-        temp_files.append(tmp)
 
-    # 10) Write merged PDF
-    out_path = settings.OUTPUT_PDF
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "wb") as f:
-        merger.write(f)
-    logger.info("Wrote PDF to {}", out_path)
+    # 10) Write out PDF
+    c.save()
+    logger.info("Wrote PDF to {}", out_pdf)
     
     if settings.FORMAT in ('png', 'both'):
         png_dir = export_pdf_to_png(
-            pdf_path=out_path,
+            pdf_path=out_pdf,
             date_list=date_list,
             cover=settings.COVER_PAGE,
             output_dir=settings.OUTPUT_PNG,
@@ -152,16 +151,12 @@ def main():
 
         # If the user only wants PNGs, remove the PDF:
         if settings.FORMAT == 'png':
-            os.remove(out_path)
-            logger.info("Removed merged PDF at {}", out_path)
+            os.remove(out_pdf)
+            logger.info("Removed merged PDF at {}", out_pdf)
 
     # 11) Persist metadata
     save_meta({"_last_anchor": anchor, "events_hash": new_hash})
     logger.info("✅ Completed generation for {}", anchor)
-
-    # 12) Clean up
-    for fpath in temp_files:
-        os.remove(fpath)
 
 if __name__ == '__main__':
     main()
