@@ -32,6 +32,10 @@ These screenshots broadly show the layout options that are possible. See [Custom
     <a href="assets/example-centercal.png">
     <img src="assets/example-centercal.png" alt="Single Month Mini-Calendar" width="200px"/>
   </a>
+  </a>
+    <a href="assets/example-allday-ingrid.png">
+    <img src="assets/example-allday-ingrid.png" alt="All Day In-Grid" width="200px"/>
+  </a>
 </p>
 
 ## Getting Started
