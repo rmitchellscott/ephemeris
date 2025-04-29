@@ -1,9 +1,9 @@
-import re
 from datetime import datetime, timedelta, date
-import calendar
+import calendar, re
 from loguru import logger
 import webcolors
 from dateutil import tz
+from dateutil.relativedelta import relativedelta
 
 from ephemeris.settings import USE_24H
 
@@ -59,40 +59,55 @@ def fmt_time(dt):
 
 
 def parse_date_range(s: str, tzinfo) -> list[date]:
-    """Given “YYYY‑MM‑DD:YYYY‑MM‑DD”, “this week”, “this month” or a single date,
-    return a list of date objects in that range (inclusive)."""
-    s = s.strip().strip('"').strip("'")
-    s = s.lower()
+    s     = s.strip().strip('"').strip("'").lower()
     today = datetime.now(tz=tzinfo).date()
 
     if s in ("day", "today"):
         return [today]
-    if s in ("week",):
+    if s == "week":
         s = "this week"
-    if s in ("month",):
+    if s == "month":
         s = "this month"
+
     if s == "this week":
-        # Assuming week = Sunday–Saturday
         offset = (today.weekday() + 1) % 7
-        start = today - timedelta(days=offset)
-        end = start + timedelta(days=6)
+        start  = today - timedelta(days=offset)
+        end    = start + timedelta(days=6)
     elif s == "this month":
-        start = today.replace(day=1)
-        last_day = calendar.monthrange(start.year, start.month)[1]
-        end = start.replace(day=last_day)
+        start  = today.replace(day=1)
+        last   = calendar.monthrange(start.year, start.month)[1]
+        end    = start.replace(day=last)
+
+    # —— aligned “N units” ——
+    elif (m := re.fullmatch(r'(?P<num>\d+)\s*(?P<unit>days?|weeks?|months?|years?)', s)):
+        num, unit = int(m.group("num")), m.group("unit").lower()
+        if unit.startswith("day"):
+            start = today
+            end   = today + timedelta(days=num - 1)
+        elif unit.startswith("week"):
+            offset = (today.weekday() + 1) % 7
+            start  = today - timedelta(days=offset)
+            end    = start + timedelta(weeks=num) - timedelta(days=1)
+        elif unit.startswith("month"):
+            start  = today.replace(day=1)
+            end    = start + relativedelta(months=num) - timedelta(days=1)
+        else:  # years
+            start  = today.replace(month=1, day=1)
+            end    = start + relativedelta(years=num) - timedelta(days=1)
+
     elif re.search(r"[:/]", s):
-        sep = ":" if ":" in s else "/"
-        a, b = s.split(sep, 1)
+        sep   = ":" if ":" in s else "/"
+        a, b  = s.split(sep, 1)
         start = datetime.strptime(a.strip(), "%Y-%m-%d").date()
         end   = datetime.strptime(b.strip(), "%Y-%m-%d").date()
     elif " to " in s:
-        a, b = re.split(r"\s+to\s+", s)
+        a, b  = re.split(r"\s+to\s+", s)
         start = datetime.strptime(a, "%Y-%m-%d").date()
         end   = datetime.strptime(b, "%Y-%m-%d").date()
     else:
-        # single date
         start = end = datetime.strptime(s, "%Y-%m-%d").date()
 
     if start > end:
         raise ValueError(f"Start date {start} after end date {end}")
+
     return [start + timedelta(days=i) for i in range((end - start).days + 1)]
