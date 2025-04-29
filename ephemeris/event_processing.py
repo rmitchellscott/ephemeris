@@ -195,7 +195,7 @@ def expand_event_for_day(
         instances.append((start, end, str(comp.get('SUMMARY','')), meta))
 
     # return instances+    final: list[tuple] = []
-    grid_start = sod.replace(hour=settings.EXCLUDE_BEFORE)
+    grid_start = sod.replace(hour=settings.START_HOUR)
     grid_end   = sod.replace(hour=settings.END_HOUR)
     final = []
     for st, en, title, meta in instances:
