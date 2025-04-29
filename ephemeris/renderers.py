@@ -513,8 +513,11 @@ def render_schedule_pdf(
 
         box_x = layout["grid_right"] - box_width  # right-align
 
-        breached_top    = (y_start_raw > layout["grid_top"])
-        breached_bottom = (y_end_raw   < layout["grid_bottom"])
+        # breached_top    = (y_start_raw > layout["grid_top"])
+        # breached_bottom = (y_end_raw   < layout["grid_bottom"])
+        breached_top    = (event["start"] < grid_start_dt)
+        breached_bottom = (event["end"]   > grid_end_dt)
+
 
         # clamp to grid bounds
         clamped_y_start = min(y_start, layout["grid_top"])
