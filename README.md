@@ -158,7 +158,7 @@ DOC_PAGE_DIMENSIONS=480x800
 DOC_PAGE_DPI=125
 ```
 <sub>*Information seems hard to find for the Kindle Scribe. If any of these values need correction, please open a GitHub Issue.</sub>\
-<sub>**DPI might not be correct, will have a device for testing ~May 2025.</sub>
+<sub>**Have a look at my [trmnl-png-processor](https://github.com/rmitchellscott/trmnl-png-processor) project.</sub>
 
 ## Customization & Supported Environment Variables
 
