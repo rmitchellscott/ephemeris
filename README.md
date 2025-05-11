@@ -195,7 +195,7 @@ DOC_PAGE_DPI=125
 | DOC_COVER_ENABLED           | true                     | true, false             | Print a cover page with SVG as the rendered document's first page.                        |
 | DOC_COVER_WIDTH_SCALE       | 0.75                     | 0 - 1                   | Scale factor for the cover SVG width relative to page width.                         |
 | DOC_COVER_VERTICAL_POSITION | 0.25                     | 0 - 1                   | Vertical position factor for placing the cover SVG on the page.                      |
-| DOC_ALLDAY_BOUNDARY         | grid                     | grid, page              | Select the left boundary for the "All-Day Events" band, either the main time grid or the left margin. |
+| DOC_ALLDAY_BOUNDARY         | grid                     | grid, margin            | Select the left boundary for the "All-Day Events" band, either the main time grid or the left margin. |
 | DOC_ALLDAY_MODE             | band                     | band, in-grid, disabled | Set to `band` to draw the All-Day Events in their own band at the top, set to `in-grid` to draw all day events in the "zeroth" hour of the main time grid, set to `disabled` to disable All-Day Events from being drawn. |
 | DOC_ALLDAY_OVERFLOW         |  true                    | true, false        | When true, events outside the main time grid hours are shown with All-Day Events. | 
 | DOC_MINICAL_MODE            | full                     | full, current, false    | `full` will draw mini-calendars for the current and next month, `current` will draw only the current month, `disabled` will disable. |
