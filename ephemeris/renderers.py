@@ -263,7 +263,10 @@ def render_time_grid(
            and override_label_text is not None \
            and hour == override_label_hour:
             # two-line centered label inside this hour-slot
-            c.setFillGray(0.2)
+            if settings.MONOCHROME:
+                c.setFillGray(0)
+            else:
+                c.setFillGray(0.2)
             c.setFont("Montserrat-SemiBold", 7)
             c.drawRightString(
                 layout["grid_left"] - 7,
@@ -277,7 +280,10 @@ def render_time_grid(
             )
 
         else:
-            c.setFillGray(0.2)
+            if settings.MONOCHROME:
+                c.setFillGray(0)
+            else:
+                c.setFillGray(0.2)
             c.setFont("Montserrat-SemiBold", 7)
             label = (
                 f"{hour:02}:00"
@@ -426,7 +432,10 @@ def render_schedule_pdf(
 
     # Line under title
     sep_y = title_y - element_pad
-    c.setStrokeGray(0.4)
+    if settings.MONOCHROME:
+        c.setStrokeGray(0)
+    else:
+        c.setStrokeGray(0.4)
     c.setLineWidth(1)
     c.line(page_left, sep_y, page_right, sep_y)
 
@@ -712,7 +721,10 @@ def render_schedule_pdf(
     
     if DRAW_ALL_DAY_BAND:
         # Draw label string
-        c.setStrokeGray(0.2)
+        if settings.MONOCHROME:
+            c.setStrokeGray(0)
+        else:
+            c.setStrokeGray(0.2)
         draw_centered_multiline(
             c,
             label_lines,
@@ -927,13 +939,23 @@ def export_pdf_to_png(pdf_path: str,
 
     # prefix for pdftocairo (it will append -1.png, -2.png, etc)
     prefix = str(out_dir / "page")
-    subprocess.run([
+
+    args = [
         "pdftocairo",
         "-png",
         "-r", str(dpi),
+    ]
+    if settings.MONOCHROME:
+        args.append("-mono")
+        args.append("-antialias")
+        args.append("none")
+
+    args.extend([
         str(pdf_path),
         prefix
-    ], check=True)
+    ])
+
+    subprocess.run(args, check=True)
 
     # rename page-N.png → cover.png / ephemeris_YYYY-MM-DD.png
     for file in sorted(out_dir.glob("page-*.png")):

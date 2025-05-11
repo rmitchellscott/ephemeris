@@ -209,6 +209,7 @@ DOC_PAGE_DPI=125
 | DOC_EVENT_FILL_COLOR        | gray14                   | black, gray0, #000000   | Color for the background of events. CSS names, Ephemeris gray names, and hex supported. |
 | DOC_EVENT_BORDER_COLOR      | gray(20%)                | black, gray0, #000000   | Color for the outline of events. CSS names, Ephemeris gray names, and hex supported. |
 | DOC_FOOTER_TEXT             | E P H E M E R I S        | updatedat, disabled, My Cool Footer | Set to `updatedat` to print the "Updated at" timestamp, `disabled` to disable, or any text you want. |
+| DOC_MONOCHROME              | false                    | true, false               | Set to `true` to render the document in monochrome.                                   |
 | DOC_FOOTER_COLOR            | gray(60%)                | black, gray0, #000000   | Color for the page footer. CSS names, Ephemeris gray names, and hex supported.       |
 | DOC_GRID_LINE_COLOR         | gray(20%)                | black, #000000          | Color for the time grid lines. CSS names, Ephemeris gray names, and hex supported.   |
 | DOC_PAGE_DIMENSIONS         | 1404x1872                | 1080x1920               | Resolution for rendered document.       
