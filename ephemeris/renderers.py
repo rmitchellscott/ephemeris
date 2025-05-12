@@ -949,10 +949,12 @@ def export_pdf_to_png(pdf_path: str,
         "-r", str(dpi),
     ]
     if settings.MONOCHROME:
+        logger.debug("Drawing in monochrome.")
         args.append("-mono")
         args.append("-antialias")
         args.append("none")
     elif not settings.ANTIALIAS:
+        logger.debug("Drawing with anti-aliasing disabled.")
         args.append("-antialias")
         args.append("none")
     args.extend([
