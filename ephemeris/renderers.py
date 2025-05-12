@@ -952,7 +952,9 @@ def export_pdf_to_png(pdf_path: str,
         args.append("-mono")
         args.append("-antialias")
         args.append("none")
-
+    elif not settings.ANTIALIAS:
+        args.append("-antialias")
+        args.append("none")
     args.extend([
         str(pdf_path),
         prefix
