@@ -62,7 +62,7 @@ OUTPUT_PNG   = os.getenv("APP_OUTPUT_PNG_DIR", "output/png")
 DEFAULT_COVER = os.getenv("DOC_COVER_SVG_PATH", str(BASE_DIR / "assets/cover.svg"))
 FONTS_DIR = BASE_DIR / "fonts"
 
-TIMEZONE = os.getenv("TIME_ZONE", "UTC")
+TIMEZONE = os.getenv("TZ", os.getenv("TIME_ZONE", "UTC"))
 DATE_RANGE = os.getenv("TIME_DATE_RANGE", "today")
 TIME_FORMAT    = os.getenv("TIME_FORMAT", "24")
 USE_24H        = TIME_FORMAT == "24"

@@ -68,7 +68,7 @@ services:
       - ./config.yaml:/app/config.yaml
       - ./feeds_meta.yaml:/app/feeds_meta.yaml  # Used for change detection
     environment:
-      - TIME_ZONE=America/Denver
+      - TZ=America/Denver
       - TIME_DATE_RANGE=week
 ```
 
@@ -79,7 +79,7 @@ docker run --rm \
   -v "$(pwd)/output:/app/output" \
   -v "$(pwd)/config.yaml:/app/config.yaml" \
   -v "$(pwd)/feeds_meta.yaml:/app/feeds_meta.yaml" \
-  -e TIME_ZONE=America/Denver \
+  -e TZ=America/Denver \
   -e TIME_DATE_RANGE=week \
   ghcr.io/rmitchellscott/ephemeris
 ```
@@ -96,11 +96,6 @@ Install dependencies with:
 pip install requirements.txt
 ```
 
-Set environment variables to customize the output:
-
-```bash
-export TIME_ZONE="America/New_York"
-```
 Run the script:
 
 ```bash
@@ -170,7 +165,7 @@ DOC_PAGE_DPI=125
 | TIME_DISPLAY_END    | 21             | 21                               | Defines the ending hour of the displayed daily schedule.                             |
 | TIME_FILTER_MIN_HOUR| 0              | 4                                | Excludes events with start times before this hour from the generated schedule.       |
 | TIME_DISPLAY_START  | 6              | 6                                | Defines the starting hour of the displayed daily schedule.                           |
-| TIME_ZONE           | UTC            | America/New_York                 | Sets the timezone used for interpreting event times.                                 |
+| TZ                  | UTC            | America/New_York                 | Sets the timezone used for interpreting event times.                                 |
 | TIME_FORMAT         | 24             | 12, 24                           | Specifies time formatting in 12-hour or 24-hour formats.                             |
 
 ### Application Configuration
