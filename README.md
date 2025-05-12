@@ -151,6 +151,9 @@ DOC_PAGE_DPI=226
 ```shell
 DOC_PAGE_DIMENSIONS=480x800
 DOC_PAGE_DPI=125
+# Choose one of these for clearer text rendering:
+DOC_MONOCHROME=true
+DOC_ANTIALIAS=false
 ```
 <sub>*Information seems hard to find for the Kindle Scribe. If any of these values need correction, please open a GitHub Issue.</sub>\
 <sub>**Have a look at my [trmnl-png-processor](https://github.com/rmitchellscott/trmnl-png-processor) project.</sub>
