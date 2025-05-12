@@ -1,51 +1,65 @@
-name: build-docker
+name: CI
+on: push
 
-on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*.*.*'
-      - 'v*.*'
+permissions:
+  contents: read
+  packages: write
+  id-token: write   
 
 jobs:
-  build:
-    name: Build Image
+  docker:
+    if: startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Set up QEMU (ARM emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx (BuildKit)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          images: |
-            ghcr.io/rmitchellscott/ephemeris
-          tags: |
-            # branch-based tags (e.g. 'main')
-            type=ref,event=branch
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            # mirror git tag (e.g. 'v1.2.3')
-            type=ref,event=tag
+      - name: Build & push Docker with GoReleaser
+        uses: goreleaser/goreleaser-action@v4
+        with:
+          version: latest
+          args: release --snapshot --skip=archive,announce,validate
 
-            # semver without the 'v' (e.g. '1.2.3')
-            type=semver,pattern={{version}}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push Docker images & manifest manually
+        shell: bash
+        run: |
+          # grab the short SHA
+          SHORT_SHA=${GITHUB_SHA:0:7}
 
-            # major.minor (e.g. '1.2')
-            type=semver,pattern={{major}}.{{minor}}
+          docker push ghcr.io/rmitchellscott/ephemeris:${SHORT_SHA}-amd64
+          docker push ghcr.io/rmitchellscott/ephemeris:${SHORT_SHA}-arm64v8
 
-            # major only (e.g. '1')
-            type=semver,pattern={{major}}
+          docker manifest create \
+            ghcr.io/rmitchellscott/ephemeris:${SHORT_SHA} \
+            --amend ghcr.io/rmitchellscott/ephemeris:${SHORT_SHA}-amd64 \
+            --amend ghcr.io/rmitchellscott/ephemeris:${SHORT_SHA}-arm64v8
 
-            # latest on main
-            type=raw,priority=1000,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          docker manifest push ghcr.io/rmitchellscott/ephemeris:${SHORT_SHA}
 
-            # commit short SHA
-            type=sha
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -53,22 +67,17 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push
-        id: docker_build
-        uses: docker/build-push-action@v6
+      - name: Full GoReleaser release
+        uses: goreleaser/goreleaser-action@v4
         with:
-          context: .
-          pull: true
-          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
-          platforms: linux/amd64,linux/arm64/v8
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

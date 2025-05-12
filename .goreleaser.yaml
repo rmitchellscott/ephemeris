@@ -1,0 +1,72 @@
+# .goreleaser.yml
+project_name: ephemeris
+version: 2
+builds:
+  - id: skip
+    skip: true
+
+snapshot:
+  version_template: "{{ .ShortCommit }}"
+
+dockers:
+  - &dockers
+    image_templates:
+      - ghcr.io/rmitchellscott/{{ .ProjectName }}:{{ .Version }}-amd64
+    use: buildx
+    dockerfile: Dockerfile
+    extra_files:
+      - requirements.txt
+      - fonts
+      - assets
+      - ephemeris
+      - ephemeris.py
+    build_flag_templates:
+      - "--platform=linux/amd64"
+  - <<: *dockers
+    image_templates:
+      - ghcr.io/rmitchellscott/{{ .ProjectName }}:{{ .Version }}-arm64v8
+    goarch: arm64
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+docker_manifests:
+  - &docker_manifests
+    name_template: ghcr.io/rmitchellscott/{{ .ProjectName }}:latest
+    image_templates:
+      - ghcr.io/rmitchellscott/{{ .ProjectName }}:{{ .Version }}-amd64
+      - ghcr.io/rmitchellscott/{{ .ProjectName }}:{{ .Version }}-arm64v8
+  - <<: *docker_manifests
+    name_template: ghcr.io/rmitchellscott/{{ .ProjectName }}:{{ .Version }}
+  - <<: *docker_manifests
+    name_template: ghcr.io/rmitchellscott/{{ .ProjectName }}:{{ .Major }}
+  - <<: *docker_manifests
+    name_template: ghcr.io/rmitchellscott/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs'
+      - '^test'
+  groups:
+    - title: Breaking Changes
+      order: 0
+      regexp: "^.*!:"
+    - title: Features
+      order: 1
+      regexp: "(feat)"
+    - title: Fixes
+      order: 2
+      regexp: "(fix|perf)"
+    - title: Dependencies
+      order: 999
+      regexp: '\(deps\):'
+    - title: Others
+      order: 998
+
+release:
+  footer: >-
+
+    ---
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+
+archives: []
