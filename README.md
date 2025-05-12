@@ -192,14 +192,14 @@ DOC_PAGE_DPI=125
 | Variable                    | Default                   | Example                | Description                                                                          |
 |:----------------------------|:--------------------------|:-----------------------|:-------------------------------------------------------------------------------------|
 | DOC_COVER_SVG_PATH          | {BASE_DIR}/assets/cover.svg | /path/to/cover.svg   | Path to the SVG file used for the cover page.                                        |
-| DOC_COVER_ENABLED           | true                     | true, false             | Print a cover page with SVG as the rendered document's first page.                        |
+| DOC_COVER_ENABLED           | true                     | true, false             | Print a cover page with SVG as the rendered document's first page.                   |
 | DOC_COVER_WIDTH_SCALE       | 0.75                     | 0 - 1                   | Scale factor for the cover SVG width relative to page width.                         |
 | DOC_COVER_VERTICAL_POSITION | 0.25                     | 0 - 1                   | Vertical position factor for placing the cover SVG on the page.                      |
 | DOC_ALLDAY_BOUNDARY         | grid                     | grid, margin            | Select the left boundary for the "All-Day Events" band, either the main time grid or the left margin. |
 | DOC_ALLDAY_MODE             | band                     | band, in-grid, disabled | Set to `band` to draw the All-Day Events in their own band at the top, set to `in-grid` to draw all day events in the "zeroth" hour of the main time grid, set to `disabled` to disable All-Day Events from being drawn. |
-| DOC_ALLDAY_OVERFLOW         |  true                    | true, false        | When true, events outside the main time grid hours are shown with All-Day Events. | 
+| DOC_ALLDAY_OVERFLOW         |  true                    | true, false        | When true, events outside the main time grid hours are shown with All-Day Events.         | 
 | DOC_MINICAL_MODE            | full                     | full, current, false    | `full` will draw mini-calendars for the current and next month, `current` will draw only the current month, `disabled` will disable. |
-| DOC_MINICAL_LINKS           | true                     | true, false             | Add links to mini-cal days that have pages rendered. |
+| DOC_MINICAL_LINKS           | true                     | true, false             | Add links to mini-cal days that have pages rendered.                                 |
 | DOC_MINICAL_INDICATE_RANGE  | true                     | true, false             | Indicate which days are in the document by slightly bolding them in the mini-calendars. |
 | DOC_MINICAL_ALIGN           | right                    | center, right, left     | Horizontal alignment for the mini-calendars. Center and Left are available when `DOC_ALLDAY_MODE` is set to anything other than `band`. |
 | DOC_MINICAL_HEIGHT          | 60                       | 40                      | Height of mini-calendars and All-Day Events area in points (1pt = 1/72in).           |
@@ -209,11 +209,12 @@ DOC_PAGE_DPI=125
 | DOC_EVENT_FILL_COLOR        | gray14                   | black, gray0, #000000   | Color for the background of events. CSS names, Ephemeris gray names, and hex supported. |
 | DOC_EVENT_BORDER_COLOR      | gray(20%)                | black, gray0, #000000   | Color for the outline of events. CSS names, Ephemeris gray names, and hex supported. |
 | DOC_FOOTER_TEXT             | E P H E M E R I S        | updatedat, disabled, My Cool Footer | Set to `updatedat` to print the "Updated at" timestamp, `disabled` to disable, or any text you want. |
-| DOC_MONOCHROME              | false                    | true, false               | Set to `true` to render the document in monochrome.                                   |
-| DOC_FOOTER_COLOR            | gray(60%)                | black, gray0, #000000   | Color for the page footer. CSS names, Ephemeris gray names, and hex supported.       |
-| DOC_GRID_LINE_COLOR         | gray(20%)                | black, #000000          | Color for the time grid lines. CSS names, Ephemeris gray names, and hex supported.   |
-| DOC_PAGE_DIMENSIONS         | 1404x1872                | 1080x1920               | Resolution for rendered document.       
-| DOC_PAGE_DPI                | 226                      | 300                     | DPI/PPI for rendered document.                                                            |                                                |
+| DOC_MONOCHROME              | false                    | true, false               | Set to `true` to render the document in monochrome, disabling anti-aliasing.       |
+| DOC_ANTIALIAS               | true                    | true, false               | Set to `false` to disable anti-aliasing.                                            |
+| DOC_FOOTER_COLOR            | gray(60%)                | black, gray0, #000000   | Color for the page footer. CSS names, Ephemeris gray names, and hex supported.     |
+| DOC_GRID_LINE_COLOR         | gray(20%)                | black, #000000          | Color for the time grid lines. CSS names, Ephemeris gray names, and hex supported. |
+| DOC_PAGE_DIMENSIONS         | 1404x1872                | 1080x1920               | Resolution for rendered document.                                                    |
+| DOC_PAGE_DPI                | 226                      | 300                     | DPI/PPI for rendered document.                                                       |
 | DOC_MARGIN_LEFT             | 6                        | 12                      | Left page margin in points (1pt = 1/72in).                                           |
 | DOC_MARGIN_RIGHT            | 6                        | 12                      | Right page margin in points (1pt = 1/72in).                                          |
 | DOC_MARGIN_TOP              | 9                        | 12                      | Top page margin in points (1pt = 1/72in).                                            |
