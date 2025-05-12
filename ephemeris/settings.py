@@ -89,6 +89,7 @@ ALLDAY_IN_GRID     = ALLDAY_MODE == "in-grid"
 DRAW_ALL_DAY       = ALLDAY_MODE in ("band", "in-grid")
 
 # Color defaults
+MONOCHROME      = os.getenv("DOC_MONOCHROME", "false").lower() in ("1", "true", "yes")
 EVENT_FILL      = os.getenv("DOC_EVENT_FILL_COLOR", "gray14")
 EVENT_STROKE    = os.getenv("DOC_EVENT_BORDER_COLOR", "gray(20%)")
 GRIDLINE_COLOR  = os.getenv("DOC_GRID_LINE_COLOR", "gray(20%)")
