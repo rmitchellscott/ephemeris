@@ -890,7 +890,10 @@ def render_schedule_pdf(
     footer = settings.FOOTER
     page_bottom = settings.PDF_MARGIN_BOTTOM
     if footer == "updatedat":
-        footer_text  = now.strftime("Updated: %Y-%m-%d %H:%M %Z")
+        if settings.USE_24H:
+            footer_text = now.strftime("Updated: %Y-%m-%d %H:%M %Z")
+        else:
+            footer_text = now.strftime("Updated: %Y-%m-%d %I:%M %p %Z")
     else:
         footer_text = footer
     if footer != "disabled":
