@@ -64,6 +64,10 @@ def parse_date_range(s: str, tzinfo) -> list[date]:
 
     if s in ("day", "today"):
         return [today]
+
+    if s == "tomorrow":
+        return [today + timedelta(days=1)]
+
     if s == "week":
         s = "this week"
     if s == "month":
