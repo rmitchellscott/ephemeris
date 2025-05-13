@@ -164,7 +164,7 @@ DOC_ANTIALIAS=false
 
 | Variable            | Default        | Example                          | Description                                                                          |
 |:--------------------|:---------------|:---------------------------------|:-------------------------------------------------------------------------------------|
-| TIME_DATE_RANGE     | today          | today, week, month, 2025-04-14:2025-04-18 | Date range to create schedules for. Each day will be a single page. A single multi-page PDF will be rendered.   |
+| TIME_DATE_RANGE     | today          | today, week, month, tomorrow, 2025-04-14:2025-04-18 | Date range to create schedules for. Each day will be a single page. A single multi-page PDF will be rendered.   |
 | TIME_DISPLAY_END    | 21             | 21                               | Defines the ending hour of the displayed daily schedule.                             |
 | TIME_FILTER_MIN_HOUR| 0              | 4                                | Excludes events with start times before this hour from the generated schedule.       |
 | TIME_DISPLAY_START  | 6              | 6                                | Defines the starting hour of the displayed daily schedule.                           |
