@@ -190,10 +190,10 @@ def expand_event_for_day(
     # Recurring
     raw_rr = comp.get('RRULE')
     if raw_rr:
-        rule = rrulestr(raw_rr.to_ical().decode(), dtstart=start_raw if isinstance(start_raw, datetime) else None)
-        end_raw   = _get_raw_end(comp)
-        end0    = normalize(end_raw, 'dtend')
-        # build exdates
+        rule = rrulestr(raw_rr.to_ical().decode(), dtstart=start_raw)
+        end_raw = _get_raw_end(comp)
+        end0 = normalize(end_raw, 'dtend')
+
         exdates = set()
         ex_prop = comp.get('EXDATE')
         if ex_prop:
@@ -204,28 +204,27 @@ def expand_event_for_day(
                     if isinstance(dt0, datetime) and dt0.tzinfo is None:
                         dt0 = dt0.replace(tzinfo=tz_local)
                     exdates.add(dt0)
+
         for occ in rule.between(sod, sod_next, inc=True):
             if occ in override_map.get(uid, set()):
                 logger.opt(colors=True).log("EVENTS","<yellow>Skipping occurrence (override exists):</yellow> '{}' at {:02d}:{:02d}.", comp.get('SUMMARY','Untitled'), occ.hour, occ.minute)
                 continue
-            if  occ in exdates:
+            if occ in exdates:
                 logger.opt(colors=True).log("EVENTS","<yellow>Skipping occurrence (excluded for this day):</yellow> '{}' at {:02d}:{:02d}.", comp.get('SUMMARY','Untitled'), occ.hour, occ.minute)
                 continue
             st = occ.astimezone(tz_local)
-            # en = (occ + (end - start)).astimezone(tz_local)
             en = (occ + (end0 - start)).astimezone(tz_local)
             meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
             instances.append((st, en, str(comp.get('SUMMARY','')), meta))
-        # return instances
 
-    # One-off
-    if isinstance(start, datetime) and start.date() == target_date:
-        end_raw = _get_raw_end(comp)
-        end     = normalize(end_raw, 'dtend')
-        meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
-        instances.append((start, end, str(comp.get('SUMMARY','')), meta))
+    else:
+        # One‑off only for non‑recurring events
+        if isinstance(start, datetime) and start.date() == target_date:
+            end_raw = _get_raw_end(comp)
+            end     = normalize(end_raw, 'dtend')
+            meta = {'uid': uid, 'calendar_color': color, 'all_day': False}
+            instances.append((start, end, str(comp.get('SUMMARY','')), meta))
 
-    # return instances+    final: list[tuple] = []
     grid_start = sod.replace(hour=settings.START_HOUR)
     grid_end   = sod.replace(hour=settings.END_HOUR)
     final = []
@@ -236,7 +235,6 @@ def expand_event_for_day(
 
         off_before = en <= grid_start
         off_after  = st >= grid_end
-        # straddle   = st < grid_start or en > grid_end
 
         if settings.CONVERT_OFFGRID_TO_ALLDAY and (off_before or off_after):
             # clamp inside [sod, sod_next] so it passes date filters
